@@ -1,0 +1,52 @@
+<div class="recipe-panel">
+  <div class="panel-header">
+    <div>
+      <h2><i class="fa-solid fa-utensils text-amber"></i> Recipe & Food Costing (Bill of Materials)</h2>
+      <span class="subtitle">Ingredient breakdown, raw material consumption, and gross margin analysis from database</span>
+    </div>
+  </div>
+
+  <div *ngIf="isLoading()" class="loading-state" style="text-align: center; padding: 4rem 1rem; color: var(--text-muted);">
+    <i class="fa-solid fa-circle-notch fa-spin fa-2x text-amber" style="margin-bottom: 0.75rem;"></i>
+    <p>Calculating live recipe food costing from inventory database...</p>
+  </div>
+
+  <div *ngIf="!isLoading() && recipes().length === 0" class="empty-state" style="text-align: center; padding: 4rem 1rem; color: var(--text-muted);">
+    <i class="fa-solid fa-clipboard-list fa-2x" style="margin-bottom: 0.75rem;"></i>
+    <p>No recipe Bill of Materials recorded in database.</p>
+  </div>
+
+  <div class="recipes-container" *ngIf="!isLoading() && recipes().length > 0">
+    <div *ngFor="let rcp of recipes()" class="recipe-card">
+      <div class="recipe-card-header">
+        <div class="rcp-dish-name">{{ rcp.productName }}</div>
+        <div class="rcp-kpis">
+          <span class="rcp-badge">Selling Price: <strong>৳{{ rcp.sellingPrice }}</strong></span>
+          <span class="rcp-badge">Food Cost: <strong>৳{{ rcp.totalCost | number:'1.2-2' }}</strong></span>
+          <span class="rcp-badge badge-emerald">Gross Margin: <strong>{{ rcp.marginPercent }}%</strong></span>
+        </div>
+      </div>
+
+      <table class="recipe-table">
+        <thead>
+          <tr>
+            <th>Ingredient Raw Material</th>
+            <th>Quantity / Portion</th>
+            <th>Waste Allowance</th>
+            <th>Unit Rate</th>
+            <th>Line Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let ing of rcp.ingredients">
+            <td><strong>{{ ing.name }}</strong></td>
+            <td>{{ ing.quantity }} {{ ing.unit }}</td>
+            <td>{{ ing.wastePercent }}%</td>
+            <td>৳{{ ing.unitCost | number:'1.2-2' }}</td>
+            <td>৳{{ ing.lineCost | number:'1.2-2' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

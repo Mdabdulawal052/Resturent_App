@@ -1,0 +1,565 @@
+<div class="odoo-procurement-container">
+  <!-- Toast Notification -->
+  <div *ngIf="toastMessage()" class="odoo-toast">
+    <i class="fa-solid fa-circle-check text-emerald"></i>
+    <span>{{ toastMessage() }}</span>
+  </div>
+
+  <!-- ODOO CONTROL PANEL / TOPBAR -->
+  <header class="odoo-control-panel">
+    <div class="panel-breadcrumbs">
+      <div class="app-title-chip">
+        <i class="fa-solid fa-truck-ramp-box text-amber"></i> Procurement & Sourcing
+      </div>
+      <div class="breadcrumb-separator">/</div>
+      <div class="breadcrumb-current">Purchase Orders</div>
+      <span class="badge badge-amber" style="margin-left: 0.5rem;">Bangladesh Market</span>
+    </div>
+
+    <!-- Quick Action Buttons -->
+    <div class="panel-actions">
+      <button class="btn btn-primary" (click)="openCreatePOModal()">
+        <i class="fa-solid fa-plus"></i> New PO
+      </button>
+      <button class="btn btn-secondary" (click)="openSupplierModal()">
+        <i class="fa-solid fa-handshake"></i> Suppliers ({{ suppliers().length }})
+      </button>
+      <div class="view-switchers">
+        <button class="view-btn" [class.active]="activeView() === 'list'" (click)="activeView.set('list')" title="List View">
+          <i class="fa-solid fa-list-ul"></i>
+        </button>
+        <button class="view-btn" [class.active]="activeView() === 'kanban'" (click)="activeView.set('kanban')" title="Kanban View">
+          <i class="fa-solid fa-table-cells-large"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- SEARCH & FILTER BAR -->
+  <div class="odoo-filter-bar">
+    <div class="search-input-group">
+      <i class="fa-solid fa-magnifying-glass search-icon"></i>
+      <input
+        type="text"
+        placeholder="Search PO number, supplier, or ingredient..."
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event)"
+      />
+      <button *ngIf="searchQuery()" class="clear-btn" (click)="searchQuery.set('')">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Filter Pills -->
+    <div class="filter-pills">
+      <button class="pill-btn" [class.active]="activeFilter() === 'all'" (click)="activeFilter.set('all')">
+        All Orders ({{ purchaseOrders().length }})
+      </button>
+      <button class="pill-btn" [class.active]="activeFilter() === 'Draft'" (click)="activeFilter.set('Draft')">
+        Draft RFQ
+      </button>
+      <button class="pill-btn" [class.active]="activeFilter() === 'Approved'" (click)="activeFilter.set('Approved')">
+        Confirmed Orders
+      </button>
+      <button class="pill-btn" [class.active]="activeFilter() === 'Received'" (click)="activeFilter.set('Received')">
+        Received (GRN)
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI SUMMARY STATS -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-amber-soft">
+        <i class="fa-solid fa-money-bill-wave text-amber"></i>
+      </div>
+      <div>
+        <div class="kpi-label">Total Spend (BDT)</div>
+        <div class="kpi-value">৳{{ totalPOValuation() | number }}</div>
+        <div class="kpi-sub">Across {{ purchaseOrders().length }} purchase orders</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon bg-blue-soft">
+        <i class="fa-solid fa-truck-fast text-blue"></i>
+      </div>
+      <div>
+        <div class="kpi-label">Pending Receipts</div>
+        <div class="kpi-value">{{ pendingReceiptsCount() }}</div>
+        <div class="kpi-sub">Awaiting delivery to kitchen store</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon bg-emerald-soft">
+        <i class="fa-solid fa-boxes-packing text-emerald"></i>
+      </div>
+      <div>
+        <div class="kpi-label">Goods Receipts (GRN)</div>
+        <div class="kpi-value">{{ goodsReceipts().length }}</div>
+        <div class="kpi-sub">Mushak 6.5 Challan posted</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon bg-purple-soft">
+        <i class="fa-solid fa-building-wheat text-purple"></i>
+      </div>
+      <div>
+        <div class="kpi-label">Verified Suppliers</div>
+        <div class="kpi-value">{{ suppliers().length }}</div>
+        <div class="kpi-sub">Dhaka & wholesale markets</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOADING / EMPTY STATES -->
+  <div *ngIf="isLoading()" class="loading-box">
+    <i class="fa-solid fa-circle-notch fa-spin text-amber fa-2x"></i>
+    <p>Loading procurement records...</p>
+  </div>
+
+  <div *ngIf="!isLoading() && filteredPOs().length === 0" class="empty-box">
+    <i class="fa-solid fa-folder-open fa-2x text-muted"></i>
+    <p>No purchase orders found matching this filter.</p>
+    <button class="btn btn-primary" (click)="openCreatePOModal()">Create New PO</button>
+  </div>
+
+  <!-- LIST / TREE VIEW -->
+  <div class="table-card" *ngIf="!isLoading() && filteredPOs().length > 0 && activeView() === 'list'">
+    <table class="odoo-table">
+      <thead>
+        <tr>
+          <th>PO Reference</th>
+          <th>Vendor / Supplier</th>
+          <th>Order Date</th>
+          <th>Lines</th>
+          <th>Total Amount (BDT)</th>
+          <th>Stage Status</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let po of filteredPOs()" (click)="viewPODetails(po)" class="clickable-row">
+          <td>
+            <div class="po-code-cell">
+              <i class="fa-solid fa-file-invoice text-amber"></i>
+              <strong>{{ po.poNo }}</strong>
+            </div>
+          </td>
+          <td>
+            <div class="supplier-cell">
+              <span>{{ po.supplierName }}</span>
+              <span class="sub-text">Satmasjid Central Store</span>
+            </div>
+          </td>
+          <td>{{ po.poDateUtc | date:'dd MMM yyyy, hh:mm a' }}</td>
+          <td>
+            <span class="lines-chip">{{ po.linesCount || 1 }} items</span>
+          </td>
+          <td>
+            <strong class="text-amber">৳{{ po.total | number }}</strong>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="{
+              'badge-amber': po.status === 'Draft',
+              'badge-blue': po.status === 'Approved',
+              'badge-emerald': po.status === 'Received',
+              'badge-rose': po.status === 'Cancelled'
+            }">
+              {{ po.status }}
+            </span>
+          </td>
+          <td style="text-align: right;" (click)="$event.stopPropagation()">
+            <div class="row-actions">
+              <button *ngIf="po.status === 'Draft'" class="btn-sm btn-outline-amber" (click)="confirmOrder(po)" title="Confirm Order">
+                <i class="fa-solid fa-check"></i> Confirm
+              </button>
+              <button *ngIf="po.status === 'Approved'" class="btn-sm btn-outline-emerald" (click)="openReceiveGoodsModal(po)" title="Receive Products">
+                <i class="fa-solid fa-dolly"></i> Receive
+              </button>
+              <button class="btn-sm btn-ghost" (click)="viewPODetails(po)" title="View Details">
+                <i class="fa-solid fa-arrow-right"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- KANBAN VIEW -->
+  <div class="kanban-grid" *ngIf="!isLoading() && filteredPOs().length > 0 && activeView() === 'kanban'">
+    <div class="kanban-card" *ngFor="let po of filteredPOs()" (click)="viewPODetails(po)">
+      <div class="kanban-header">
+        <div class="kanban-title">
+          <i class="fa-solid fa-file-invoice text-amber"></i>
+          <strong>{{ po.poNo }}</strong>
+        </div>
+        <span class="badge" [ngClass]="{
+          'badge-amber': po.status === 'Draft',
+          'badge-blue': po.status === 'Approved',
+          'badge-emerald': po.status === 'Received'
+        }">{{ po.status }}</span>
+      </div>
+
+      <div class="kanban-supplier">
+        <i class="fa-solid fa-store text-muted"></i>
+        <span>{{ po.supplierName }}</span>
+      </div>
+
+      <div class="kanban-date">
+        <i class="fa-regular fa-calendar text-muted"></i>
+        <span>{{ po.poDateUtc | date:'mediumDate' }}</span>
+      </div>
+
+      <div class="kanban-footer">
+        <span class="lines-count">{{ po.linesCount || 1 }} line items</span>
+        <strong class="kanban-total">৳{{ po.total | number }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- ODOO-STYLE FORM SHEET MODAL (PO DETAILS & WORKFLOW)     -->
+  <!-- ======================================================== -->
+  <div class="modal-backdrop" *ngIf="selectedPO()" (click)="closePODetails()">
+    <div class="odoo-sheet-modal" (click)="$event.stopPropagation()">
+      <!-- Sheet Workflow Status Pipeline Bar -->
+      <div class="sheet-pipeline-header">
+        <div class="pipeline-actions">
+          <button *ngIf="selectedPO()!.status === 'Draft'" class="btn btn-primary" (click)="confirmOrder(selectedPO()!)">
+            <i class="fa-solid fa-check"></i> Confirm Order
+          </button>
+          <button *ngIf="selectedPO()!.status === 'Approved' || selectedPO()!.status === 'Draft'" class="btn btn-emerald" (click)="openReceiveGoodsModal(selectedPO()!)">
+            <i class="fa-solid fa-dolly"></i> Receive Products (GRN)
+          </button>
+          <button class="btn btn-secondary" (click)="printPO(selectedPO()!)">
+            <i class="fa-solid fa-print"></i> Print Mushak 6.5 Challan
+          </button>
+          <button class="btn btn-ghost" (click)="closePODetails()">
+            <i class="fa-solid fa-xmark"></i> Close
+          </button>
+        </div>
+
+        <!-- Pipeline stages -->
+        <div class="pipeline-stages">
+          <div class="stage-step" [class.active]="selectedPO()!.status === 'Draft'">
+            <span class="step-num">1</span> Draft RFQ
+          </div>
+          <div class="stage-step" [class.active]="selectedPO()!.status === 'Approved'">
+            <span class="step-num">2</span> Confirmed Order
+          </div>
+          <div class="stage-step" [class.active]="selectedPO()!.status === 'Received'">
+            <span class="step-num">3</span> Goods Received
+          </div>
+          <div class="stage-step">
+            <span class="step-num">4</span> Billed
+          </div>
+        </div>
+      </div>
+
+      <!-- Smart Stat Buttons -->
+      <div class="smart-stats-bar">
+        <div class="smart-stat-btn">
+          <i class="fa-solid fa-box text-blue"></i>
+          <div>
+            <div class="stat-val">{{ selectedPO()!.linesCount || 1 }} Items</div>
+            <div class="stat-lbl">Kitchen Stock Sourcing</div>
+          </div>
+        </div>
+        <div class="smart-stat-btn">
+          <i class="fa-solid fa-warehouse text-emerald"></i>
+          <div>
+            <div class="stat-val">WH-DHN-MAIN</div>
+            <div class="stat-lbl">Central Kitchen Store</div>
+          </div>
+        </div>
+        <div class="smart-stat-btn">
+          <i class="fa-solid fa-receipt text-amber"></i>
+          <div>
+            <div class="stat-val">Mushak 6.5</div>
+            <div class="stat-lbl">VAT Transfer Challan</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sheet Body -->
+      <div class="sheet-body">
+        <div class="sheet-title-row">
+          <div>
+            <span class="sheet-sub">Purchase Order Reference</span>
+            <h1 class="sheet-title">{{ selectedPO()!.poNo }}</h1>
+          </div>
+          <div class="sheet-status-tag">
+            <span class="badge" [ngClass]="{
+              'badge-amber': selectedPO()!.status === 'Draft',
+              'badge-blue': selectedPO()!.status === 'Approved',
+              'badge-emerald': selectedPO()!.status === 'Received'
+            }">{{ selectedPO()!.status }}</span>
+          </div>
+        </div>
+
+        <!-- Meta fields -->
+        <div class="sheet-fields-grid">
+          <div class="field-item">
+            <label>Vendor / Supplier</label>
+            <div class="field-value"><strong>{{ selectedPO()!.supplierName }}</strong></div>
+          </div>
+          <div class="field-item">
+            <label>Order Date (BST)</label>
+            <div class="field-value">{{ selectedPO()!.poDateUtc | date:'fullDate' }}</div>
+          </div>
+          <div class="field-item">
+            <label>Delivery Warehouse</label>
+            <div class="field-value">Dhanmondi Central Kitchen Store</div>
+          </div>
+          <div class="field-item">
+            <label>Currency & Payment Terms</label>
+            <div class="field-value">BDT (৳) | Net 15 Days (COD Available)</div>
+          </div>
+        </div>
+
+        <!-- Products Lines Data Table -->
+        <div class="sheet-table-section">
+          <h3>Products & Sourced Raw Materials</h3>
+          <table class="lines-table">
+            <thead>
+              <tr>
+                <th>Product / Ingredient</th>
+                <th>UoM</th>
+                <th style="text-align: right;">Quantity</th>
+                <th style="text-align: right;">Unit Cost (BDT)</th>
+                <th style="text-align: right;">NBR VAT</th>
+                <th style="text-align: right;">Subtotal (BDT)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let line of selectedPO()!.lines">
+                <td><strong>{{ line.itemName }}</strong></td>
+                <td><span class="uom-pill">{{ line.unitCode }}</span></td>
+                <td style="text-align: right;">{{ line.qty }}</td>
+                <td style="text-align: right;">৳{{ line.unitCost | number }}</td>
+                <td style="text-align: right;">৳{{ line.taxAmount | number }}</td>
+                <td style="text-align: right;"><strong class="text-amber">৳{{ line.lineTotal | number }}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Financial Totals Summary -->
+        <div class="sheet-summary-box">
+          <div class="summary-line">
+            <span>Untaxed Amount:</span>
+            <strong>৳{{ selectedPO()!.total | number }}</strong>
+          </div>
+          <div class="summary-line">
+            <span>NBR VAT (Rebateable / Zero):</span>
+            <span>৳0.00</span>
+          </div>
+          <div class="summary-line total-line">
+            <span>Total Payable:</span>
+            <strong class="text-amber">৳{{ selectedPO()!.total | number }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: CREATE NEW PURCHASE ORDER                        -->
+  <!-- ======================================================== -->
+  <div class="modal-backdrop" *ngIf="showNewPOModal()" (click)="showNewPOModal.set(false)">
+    <div class="modal-card wide-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h2><i class="fa-solid fa-cart-flatbed text-amber"></i> Create Purchase Order</h2>
+          <span class="sub-text">Generate formal procurement order for raw kitchen ingredients</span>
+        </div>
+        <button class="close-btn" (click)="showNewPOModal.set(false)"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Vendor / Supplier *</label>
+            <select [ngModel]="newPOSupplierId()" (ngModelChange)="newPOSupplierId.set(+$event)" class="form-control">
+              <option *ngFor="let s of suppliers()" [value]="s.id">{{ s.name }} ({{ s.address }})</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label>Receiving Warehouse</label>
+            <input type="text" value="Dhanmondi Kitchen Store (Satmasjid Rd)" disabled class="form-control" />
+          </div>
+        </div>
+
+        <!-- Lines Editor -->
+        <div class="lines-editor-header">
+          <h3>Order Lines</h3>
+          <button class="btn btn-secondary btn-sm" (click)="addPOLine()">
+            <i class="fa-solid fa-plus"></i> Add Line
+          </button>
+        </div>
+
+        <div class="editor-lines-list">
+          <div class="editor-line-row" *ngFor="let l of newPOLines(); let i = index">
+            <div class="form-group item-select">
+              <label *ngIf="i === 0">Ingredient</label>
+              <select [ngModel]="l.inventoryItemId" (ngModelChange)="onItemSelectionChange(i, +$event)" class="form-control">
+                <option *ngFor="let item of inventoryItems()" [value]="item.id">
+                  {{ item.name }} (Stock: {{ item.currentStock }} {{ item.unit }})
+                </option>
+              </select>
+            </div>
+
+            <div class="form-group qty-input">
+              <label *ngIf="i === 0">Qty</label>
+              <input type="number" [(ngModel)]="l.qty" (ngModelChange)="onLineQtyOrCostChange(i)" min="1" class="form-control" />
+            </div>
+
+            <div class="form-group uom-display">
+              <label *ngIf="i === 0">UoM</label>
+              <span class="uom-tag">{{ l.unitCode }}</span>
+            </div>
+
+            <div class="form-group cost-input">
+              <label *ngIf="i === 0">Cost (৳)</label>
+              <input type="number" [(ngModel)]="l.unitCost" (ngModelChange)="onLineQtyOrCostChange(i)" min="0" class="form-control" />
+            </div>
+
+            <div class="form-group total-display">
+              <label *ngIf="i === 0">Line Total</label>
+              <div class="calc-total">৳{{ l.lineTotal | number }}</div>
+            </div>
+
+            <div class="line-remove">
+              <button class="btn-icon-danger" (click)="removePOLine(i)" title="Remove Line" [disabled]="newPOLines().length === 1">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Totals breakdown -->
+        <div class="modal-totals-box">
+          <div>
+            <span>Untaxed Subtotal:</span>
+            <strong>৳{{ newPOSubtotal() | number }}</strong>
+          </div>
+          <div>
+            <span>VAT (0% Input Produce):</span>
+            <span>৳0.00</span>
+          </div>
+          <div class="grand-total-row">
+            <span>Total PO Amount:</span>
+            <strong class="text-amber">৳{{ newPOGrandTotal() | number }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showNewPOModal.set(false)">Cancel</button>
+        <button class="btn btn-primary" (click)="submitCreatePO()">Save & Create Draft PO</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: RECEIVE PRODUCTS (GRN & CHALLAN)                  -->
+  <!-- ======================================================== -->
+  <div class="modal-backdrop" *ngIf="showReceiveModal()" (click)="showReceiveModal.set(false)">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h2><i class="fa-solid fa-dolly text-emerald"></i> Receive Goods (GRN Challan)</h2>
+          <span class="sub-text">Confirm arrival of raw goods and update live kitchen stock</span>
+        </div>
+        <button class="close-btn" (click)="showReceiveModal.set(false)"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="alert alert-emerald">
+          <i class="fa-solid fa-circle-info"></i>
+          <span>Receiving for Order <strong>{{ selectedPO()?.poNo }}</strong> ({{ selectedPO()?.supplierName }}).</span>
+        </div>
+
+        <div class="form-group">
+          <label>Delivery Challan / Mushak 6.5 No</label>
+          <input type="text" [(ngModel)]="grnChallanNo" class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Batch / Lot Identifier</label>
+          <input type="text" [(ngModel)]="grnBatchNo" class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Target Destination Store</label>
+          <input type="text" value="Dhanmondi Central Kitchen Store (Main Fridge)" disabled class="form-control" />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showReceiveModal.set(false)">Cancel</button>
+        <button class="btn btn-emerald" (click)="submitReceiveGoods()">
+          <i class="fa-solid fa-check"></i> Post GRN & Update Stock
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: SUPPLIERS DIRECTORY                               -->
+  <!-- ======================================================== -->
+  <div class="modal-backdrop" *ngIf="showSupplierModal()" (click)="showSupplierModal.set(false)">
+    <div class="modal-card wide-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h2><i class="fa-solid fa-handshake text-amber"></i> Approved Suppliers (Bangladesh)</h2>
+          <span class="sub-text">Local wholesale vendors, farms, and food distributors</span>
+        </div>
+        <button class="close-btn" (click)="showSupplierModal.set(false)"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <!-- New Supplier Quick Form -->
+        <div class="new-supplier-inline-box">
+          <h4><i class="fa-solid fa-user-plus text-amber"></i> Register New Vendor</h4>
+          <div class="inline-fields">
+            <input type="text" placeholder="Vendor Name (e.g. Karwan Bazar Veg)" [(ngModel)]="newSupName" class="form-control" />
+            <input type="text" placeholder="Phone (e.g. 017...)" [(ngModel)]="newSupPhone" class="form-control" />
+            <input type="text" placeholder="Address (e.g. Karwan Bazar, Dhaka)" [(ngModel)]="newSupAddress" class="form-control" />
+            <button class="btn btn-primary" (click)="submitCreateSupplier()" [disabled]="!newSupName()">Add</button>
+          </div>
+        </div>
+
+        <!-- Supplier Table -->
+        <table class="odoo-table" style="margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Vendor Name</th>
+              <th>Phone</th>
+              <th>Address / Market Hub</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of suppliers()">
+              <td><strong>{{ s.code }}</strong></td>
+              <td><strong>{{ s.name }}</strong></td>
+              <td>{{ s.phone || 'N/A' }}</td>
+              <td>{{ s.address || 'Dhaka' }}</td>
+              <td><span class="badge badge-emerald">Verified</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showSupplierModal.set(false)">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

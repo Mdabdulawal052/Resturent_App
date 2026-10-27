@@ -1,0 +1,587 @@
+<div class="bookings-portal-container">
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast-notification" *ngIf="toastMessage()">
+    <i class="fa-solid fa-bell toast-icon text-amber"></i>
+    <span>{{ toastMessage() }}</span>
+  </div>
+
+  <!-- HOSTESS RESERVATION DESK BANNER -->
+  <header class="hostess-banner">
+    <div class="hostess-profile">
+      <div class="hostess-avatar">
+        <i class="fa-solid fa-headset"></i>
+      </div>
+      <div>
+        <div class="hostess-badge-row">
+          <span class="hostess-portal-badge"><i class="fa-solid fa-shield-halved"></i> Hostess Dedicated Session</span>
+          <span class="desk-indicator"><i class="fa-solid fa-circle text-emerald"></i> Online</span>
+        </div>
+        <h1 class="hostess-title">{{ hostessName() }} <span class="hostess-role">({{ hostessRole() }})</span></h1>
+        <div class="hostess-subtitle">
+          <span><i class="fa-solid fa-location-dot text-amber"></i> {{ hostessDesk() }}</span>
+          <span class="sep">•</span>
+          <span><i class="fa-solid fa-filter text-cyan"></i> Filtered by Date & Time Slot</span>
+          <span class="sep">•</span>
+          <span class="text-amber">Table & Individual Chair Bookings Engine</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Action Buttons -->
+    <div class="hostess-banner-actions">
+      <button class="btn btn-emerald" (click)="openNewBookingModal('Chair')">
+        <i class="fa-solid fa-chair"></i> + Book Single Chair
+      </button>
+      <button class="btn btn-amber" (click)="openNewBookingModal('Table')">
+        <i class="fa-solid fa-table"></i> + Book Entire Table
+      </button>
+    </div>
+  </header>
+
+  <!-- KPI SUMMARY METRICS -->
+  <section class="metrics-grid">
+    <div class="metric-card" [class.active-metric]="selectedTypeFilter() === 'All'" (click)="selectedTypeFilter.set('All')">
+      <div class="metric-icon total-icon"><i class="fa-solid fa-calendar-check"></i></div>
+      <div class="metric-data">
+        <span class="metric-label">Total Reservations</span>
+        <span class="metric-val">{{ totalCount() }}</span>
+      </div>
+    </div>
+
+    <div class="metric-card" [class.active-metric]="selectedTypeFilter() === 'Table'" (click)="selectedTypeFilter.set('Table')">
+      <div class="metric-icon table-icon"><i class="fa-solid fa-table-cells"></i></div>
+      <div class="metric-data">
+        <span class="metric-label">Full Table Bookings</span>
+        <span class="metric-val text-amber">{{ tableCount() }}</span>
+      </div>
+    </div>
+
+    <div class="metric-card" [class.active-metric]="selectedTypeFilter() === 'Chair'" (click)="selectedTypeFilter.set('Chair')">
+      <div class="metric-icon chair-icon"><i class="fa-solid fa-chair"></i></div>
+      <div class="metric-data">
+        <span class="metric-label">Chair / Seat Bookings</span>
+        <span class="metric-val text-cyan">{{ chairCount() }}</span>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-icon seated-icon"><i class="fa-solid fa-user-check"></i></div>
+      <div class="metric-data">
+        <span class="metric-label">Guests Seated</span>
+        <span class="metric-val text-emerald">{{ seatedCount() }}</span>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-icon confirmed-icon"><i class="fa-solid fa-circle-check"></i></div>
+      <div class="metric-data">
+        <span class="metric-label">Upcoming Confirmed</span>
+        <span class="metric-val text-purple">{{ confirmedCount() }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTROLS & FILTER BAR: DATE & TIME SLOT -->
+  <section class="filter-control-panel">
+    <!-- Date Navigation -->
+    <div class="filter-group">
+      <label class="filter-label"><i class="fa-regular fa-calendar text-amber"></i> Select Booking Date:</label>
+      <div class="quick-date-buttons">
+        <button 
+          *ngFor="let qd of quickDates()"
+          class="btn-date" 
+          [class.active-date]="selectedDate() === qd.value"
+          (click)="onDateChange(qd.value)">
+          {{ qd.label }}
+        </button>
+        <input 
+          type="date" 
+          class="custom-date-picker" 
+          [ngModel]="selectedDate()" 
+          (ngModelChange)="onDateChange($event)" />
+      </div>
+    </div>
+
+    <!-- Time Slot Navigation -->
+    <div class="filter-group">
+      <label class="filter-label"><i class="fa-regular fa-clock text-cyan"></i> Select Time Slot:</label>
+      <div class="time-slot-select-wrapper">
+        <select 
+          class="time-slot-select"
+          [ngModel]="selectedTimeSlot()" 
+          (ngModelChange)="onSlotChange($event)">
+          <option *ngFor="let slot of timeSlots" [value]="slot">{{ slot }}</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Booking Type Filter Buttons -->
+    <div class="filter-group">
+      <label class="filter-label"><i class="fa-solid fa-layer-group text-purple"></i> Type:</label>
+      <div class="type-pill-group">
+        <button class="pill-btn" [class.active]="selectedTypeFilter() === 'All'" (click)="selectedTypeFilter.set('All')">All</button>
+        <button class="pill-btn" [class.active]="selectedTypeFilter() === 'Table'" (click)="selectedTypeFilter.set('Table')">🍽️ Table</button>
+        <button class="pill-btn" [class.active]="selectedTypeFilter() === 'Chair'" (click)="selectedTypeFilter.set('Chair')">🪑 Chair</button>
+      </div>
+    </div>
+
+    <!-- Search Input -->
+    <div class="filter-group search-group">
+      <label class="filter-label"><i class="fa-solid fa-magnifying-glass"></i> Search Guest / Table:</label>
+      <div class="search-input-box">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input 
+          type="text" 
+          placeholder="Name, Phone, Table (e.g. G-01)..." 
+          [ngModel]="searchQuery()" 
+          (ngModelChange)="searchQuery.set($event)" />
+        <button *ngIf="searchQuery()" class="clear-btn" (click)="searchQuery.set('')">×</button>
+      </div>
+    </div>
+
+    <!-- View Mode Switch: List vs Floor Grid -->
+    <div class="filter-group view-toggle-group">
+      <label class="filter-label"><i class="fa-solid fa-eye"></i> View Mode:</label>
+      <div class="view-toggle-buttons">
+        <button 
+          class="toggle-btn" 
+          [class.active]="activeTab() === 'list'" 
+          (click)="activeTab.set('list')">
+          <i class="fa-solid fa-list-ul"></i> Registry List
+        </button>
+        <button 
+          class="toggle-btn" 
+          [class.active]="activeTab() === 'grid'" 
+          (click)="activeTab.set('grid')">
+          <i class="fa-solid fa-map"></i> Floor & Chair Map
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW 1: REGISTRY LIST VIEW -->
+  <section *ngIf="activeTab() === 'list'" class="registry-container">
+    <div class="registry-header-row">
+      <div class="registry-title-info">
+        <h3><i class="fa-solid fa-list-check text-amber"></i> Reservations for {{ selectedDate() }} • {{ selectedTimeSlot() }}</h3>
+        <span class="registry-count-badge">{{ filteredBookings().length }} bookings found</span>
+      </div>
+
+      <div class="refresh-box">
+        <button class="btn btn-outline" (click)="loadBookings()" [disabled]="isLoading()">
+          <i class="fa-solid fa-arrows-rotate" [class.fa-spin]="isLoading()"></i> Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="filteredBookings().length === 0 && !isLoading()" class="empty-bookings-box">
+      <div class="empty-icon"><i class="fa-solid fa-calendar-xmark"></i></div>
+      <h4>No Bookings Found for Selected Date & Time Slot</h4>
+      <p>There are no table or chair reservations matching the current filters.</p>
+      <div class="empty-actions">
+        <button class="btn btn-emerald" (click)="openNewBookingModal('Chair')">
+          <i class="fa-solid fa-chair"></i> Reserve a Chair
+        </button>
+        <button class="btn btn-amber" (click)="openNewBookingModal('Table')">
+          <i class="fa-solid fa-table"></i> Reserve a Table
+        </button>
+      </div>
+    </div>
+
+    <!-- Bookings Table -->
+    <div *ngIf="filteredBookings().length > 0" class="table-card">
+      <table class="bookings-table">
+        <thead>
+          <tr>
+            <th>Booking #</th>
+            <th>Type</th>
+            <th>Table / Seat</th>
+            <th>Guest Info</th>
+            <th>Time Slot</th>
+            <th>Guests</th>
+            <th>Deposit</th>
+            <th>Status</th>
+            <th>Special Requests</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let b of filteredBookings()" [class.row-seated]="b.status === 'Seated'">
+            <!-- Booking No -->
+            <td>
+              <span class="booking-code">{{ b.bookingNo }}</span>
+              <div class="booking-created-sub">{{ b.createdAtUtc | date:'shortTime' }}</div>
+            </td>
+
+            <!-- Booking Type Badge -->
+            <td>
+              <span *ngIf="b.bookingType === 'Table'" class="type-badge table-type">
+                <i class="fa-solid fa-table"></i> Entire Table
+              </span>
+              <span *ngIf="b.bookingType === 'Chair'" class="type-badge chair-type">
+                <i class="fa-solid fa-chair"></i> Chair / Seat
+              </span>
+            </td>
+
+            <!-- Table & Seat Number -->
+            <td>
+              <div class="table-seat-cell">
+                <span class="table-pill">{{ b.tableNo }}</span>
+                <span *ngIf="b.bookingType === 'Chair' && b.seatNumber" class="seat-pill">
+                  Chair #{{ b.seatNumber }}
+                </span>
+                <span *ngIf="b.bookingType === 'Table'" class="all-seats-pill">
+                  All Seats
+                </span>
+              </div>
+            </td>
+
+            <!-- Guest Info -->
+            <td>
+              <div class="guest-info-cell">
+                <div class="guest-name"><i class="fa-solid fa-user text-amber"></i> {{ b.customerName }}</div>
+                <div class="guest-phone"><i class="fa-solid fa-phone text-muted"></i> {{ b.customerPhone }}</div>
+                <div *ngIf="b.customerEmail" class="guest-email text-muted">{{ b.customerEmail }}</div>
+              </div>
+            </td>
+
+            <!-- Time Slot -->
+            <td>
+              <div class="slot-pill"><i class="fa-regular fa-clock"></i> {{ b.timeSlot }}</div>
+            </td>
+
+            <!-- Guest Count -->
+            <td>
+              <span class="guests-count-badge">
+                <i class="fa-solid fa-user-group"></i> {{ b.guestCount }}
+              </span>
+            </td>
+
+            <!-- Deposit -->
+            <td>
+              <div class="deposit-cell">
+                <span class="deposit-amount">৳{{ b.depositAmount | number }}</span>
+                <span *ngIf="b.isDepositPaid" class="deposit-paid-badge"><i class="fa-solid fa-check"></i> Paid</span>
+                <span *ngIf="!b.isDepositPaid && b.depositAmount > 0" class="deposit-due-badge">Due</span>
+              </div>
+            </td>
+
+            <!-- Status -->
+            <td>
+              <span class="status-badge" [ngClass]="b.status.toLowerCase()">
+                <i class="fa-solid fa-circle status-dot"></i> {{ b.status }}
+              </span>
+            </td>
+
+            <!-- Notes -->
+            <td>
+              <span class="special-notes" [title]="b.specialRequests || 'None'">
+                {{ b.specialRequests || '-' }}
+              </span>
+            </td>
+
+            <!-- Action Buttons -->
+            <td class="text-right">
+              <div class="action-buttons-group">
+                <!-- Seat Guest -->
+                <button 
+                  *ngIf="b.status === 'Confirmed'" 
+                  class="btn-action seat-action" 
+                  title="Seat guest at table"
+                  (click)="seatGuest(b)">
+                  <i class="fa-solid fa-chair text-emerald"></i> Seat
+                </button>
+
+                <!-- Open in POS -->
+                <button 
+                  class="btn-action pos-action" 
+                  title="Open table in POS terminal"
+                  (click)="openPosForBooking(b)">
+                  <i class="fa-solid fa-cash-register text-amber"></i> POS
+                </button>
+
+                <!-- Cancel Booking -->
+                <button 
+                  *ngIf="b.status !== 'Cancelled' && b.status !== 'Completed'" 
+                  class="btn-action cancel-action" 
+                  title="Cancel this reservation"
+                  (click)="cancelBooking(b)">
+                  <i class="fa-solid fa-xmark text-danger"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- VIEW 2: INTERACTIVE FLOOR & CHAIR MAP -->
+  <section *ngIf="activeTab() === 'grid'" class="visual-floor-container">
+    <!-- Area Tabs -->
+    <div class="floor-area-bar">
+      <div class="area-pills">
+        <button 
+          *ngFor="let area of diningAreas()" 
+          class="area-pill"
+          [class.active]="selectedAreaId() === area.id"
+          (click)="selectedAreaId.set(area.id)">
+          <i class="fa-solid fa-map-pin"></i> {{ area.name }} (Floor {{ area.floorNumber }})
+        </button>
+      </div>
+
+      <!-- Color Legend -->
+      <div class="floor-legend">
+        <span class="legend-item"><span class="legend-color color-free-table"></span> Free Table</span>
+        <span class="legend-item"><span class="legend-color color-booked-table"></span> Fully Booked Table</span>
+        <span class="legend-item"><span class="legend-color color-free-chair"></span> Free Chair (Click to book)</span>
+        <span class="legend-item"><span class="legend-color color-booked-chair"></span> Booked Chair</span>
+      </div>
+    </div>
+
+    <!-- Interactive Canvas -->
+    <div class="floor-canvas">
+      <div 
+        *ngFor="let table of currentTables()"
+        class="floor-table-node"
+        [class.table-fully-booked]="isTableFullyBooked(table)"
+        [class.table-round]="table.shape === 'round'"
+        [style.left.px]="table.positionX || 50"
+        [style.top.px]="table.positionY || 50"
+        [style.width.px]="table.width || 120"
+        [style.height.px]="table.height || 100">
+
+        <!-- Table Interior Body -->
+        <div class="table-body" (click)="openNewBookingModal('Table', table)">
+          <div class="table-no-tag">{{ table.tableNo }}</div>
+          <div class="table-cap-tag">{{ table.capacity }} Seats</div>
+
+          <!-- Table Booking Status Tag -->
+          <div *ngIf="isTableFullyBooked(table)" class="table-status-reserved">
+            <i class="fa-solid fa-lock"></i> Reserved
+            <div class="reserved-guest-name">{{ getTableBooking(table)?.customerName }}</div>
+          </div>
+          <div *ngIf="!isTableFullyBooked(table)" class="table-status-available">
+            <i class="fa-solid fa-plus"></i> Reserve Table
+          </div>
+        </div>
+
+        <!-- Dynamic Realistic Chairs around the Table -->
+        <div 
+          *ngFor="let chair of getTableChairs(table)"
+          class="visual-chair-item"
+          [class.chair-booked]="chair.isBooked"
+          [class.chair-free]="!chair.isBooked"
+          [ngStyle]="chair.style"
+          [title]="chair.isBooked ? ('Reserved: ' + (chair.bookedGuest || 'Booked')) : ('Chair #' + chair.seatNumber + ' - Click to Reserve')"
+          (click)="$event.stopPropagation(); !chair.isBooked && openNewBookingModal('Chair', table, chair.seatNumber)">
+          
+          <div class="chair-backrest"></div>
+          <div class="chair-cushion">
+            <span class="chair-num">{{ chair.seatNumber }}</span>
+          </div>
+          <div *ngIf="chair.isBooked" class="chair-booked-dot"></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL: NEW TABLE OR CHAIR RESERVATION -->
+  <div *ngIf="showCreateModal()" class="modal-backdrop" (click)="closeCreateModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge" [class.chair-badge]="newBookingType() === 'Chair'">
+            <i *ngIf="newBookingType() === 'Table'" class="fa-solid fa-table"></i>
+            <i *ngIf="newBookingType() === 'Chair'" class="fa-solid fa-chair"></i>
+          </div>
+          <div>
+            <h3>New {{ newBookingType() }} Reservation</h3>
+            <p class="modal-sub">Hostess Reservation Desk • Fast DB Check-In</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" (click)="closeCreateModal()">×</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body">
+        
+        <!-- Booking Type Switcher -->
+        <div class="form-group">
+          <label class="form-label">Reservation Type:</label>
+          <div class="type-toggle-switch">
+            <button 
+              type="button"
+              class="switch-btn" 
+              [class.active]="newBookingType() === 'Table'"
+              (click)="newBookingType.set('Table')">
+              <i class="fa-solid fa-table"></i> Entire Table
+            </button>
+            <button 
+              type="button"
+              class="switch-btn" 
+              [class.active]="newBookingType() === 'Chair'"
+              (click)="newBookingType.set('Chair')">
+              <i class="fa-solid fa-chair"></i> Single Chair / Seat
+            </button>
+          </div>
+        </div>
+
+        <!-- Date & Time Slot Grid -->
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Booking Date:</label>
+            <input 
+              type="date" 
+              class="form-control" 
+              [ngModel]="newBookingDate()" 
+              (ngModelChange)="newBookingDate.set($event)" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Time Slot:</label>
+            <select 
+              class="form-control" 
+              [ngModel]="newBookingTimeSlot()" 
+              (ngModelChange)="newBookingTimeSlot.set($event)">
+              <option *ngFor="let slot of timeSlots.slice(1)" [value]="slot">{{ slot }}</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Table Selection -->
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Select Table:</label>
+            <select 
+              class="form-control" 
+              [ngModel]="newBookingTableId()" 
+              (ngModelChange)="newBookingTableId.set($event)">
+              <option *ngFor="let t of currentTables()" [value]="t.id">
+                Table {{ t.tableNo }} (Capacity: {{ t.capacity }} seats)
+              </option>
+            </select>
+          </div>
+
+          <!-- If Chair Booking: Seat Number Selector -->
+          <div *ngIf="newBookingType() === 'Chair'" class="form-group">
+            <label class="form-label">Select Chair / Seat #:</label>
+            <div class="seat-picker-buttons">
+              <button 
+                type="button"
+                *ngFor="let s of [1,2,3,4,5,6]"
+                class="seat-pick-btn"
+                [class.selected-seat]="newBookingSeatNumber() === s"
+                (click)="newBookingSeatNumber.set(s)">
+                Chair #{{ s }}
+              </button>
+            </div>
+          </div>
+
+          <!-- If Table Booking: Guest Count -->
+          <div *ngIf="newBookingType() === 'Table'" class="form-group">
+            <label class="form-label">Number of Guests (Covers):</label>
+            <input 
+              type="number" 
+              min="1" 
+              max="20" 
+              class="form-control" 
+              [ngModel]="newBookingGuestCount()" 
+              (ngModelChange)="newBookingGuestCount.set($event)" />
+          </div>
+        </div>
+
+        <!-- Customer Name & Phone -->
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Customer Name *:</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              placeholder="e.g. Tanvir Ahmed" 
+              [ngModel]="newBookingCustomerName()" 
+              (ngModelChange)="newBookingCustomerName.set($event)" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Mobile Phone *:</label>
+            <input 
+              type="tel" 
+              class="form-control" 
+              placeholder="e.g. 01712345678" 
+              [ngModel]="newBookingCustomerPhone()" 
+              (ngModelChange)="newBookingCustomerPhone.set($event)" />
+          </div>
+        </div>
+
+        <!-- Customer Email & Advance Deposit -->
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Email (Optional):</label>
+            <input 
+              type="email" 
+              class="form-control" 
+              placeholder="e.g. guest@email.com" 
+              [ngModel]="newBookingCustomerEmail()" 
+              (ngModelChange)="newBookingCustomerEmail.set($event)" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Advance Booking Deposit (BDT ৳):</label>
+            <div class="deposit-input-group">
+              <span class="input-prefix">৳</span>
+              <input 
+                type="number" 
+                min="0" 
+                step="50" 
+                class="form-control" 
+                [ngModel]="newBookingDeposit()" 
+                (ngModelChange)="newBookingDeposit.set($event)" />
+              <label class="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  [ngModel]="newBookingIsDepositPaid()" 
+                  (ngModelChange)="newBookingIsDepositPaid.set($event)" />
+                Collected
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Special Requests -->
+        <div class="form-group">
+          <label class="form-label">Special Requests / Preferences:</label>
+          <textarea 
+            rows="2" 
+            class="form-control" 
+            placeholder="e.g. Window seat, Birthday decor, High chair needed, Quiet corner..." 
+            [ngModel]="newBookingSpecialRequests()" 
+            (ngModelChange)="newBookingSpecialRequests.set($event)">
+          </textarea>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeCreateModal()">Cancel</button>
+        <button 
+          type="button" 
+          class="btn btn-amber" 
+          [disabled]="isSubmitting()" 
+          (click)="saveBooking()">
+          <i class="fa-solid fa-calendar-check" *ngIf="!isSubmitting()"></i>
+          <i class="fa-solid fa-spinner fa-spin" *ngIf="isSubmitting()"></i>
+          Confirm & Save Reservation
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</div>

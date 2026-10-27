@@ -1,0 +1,11 @@
+:host { display: block; height: 100%; width: 100%; padding: 1.25rem; overflow-y: auto; }
+.panel-header { margin-bottom: 1.5rem; }
+.subtitle { font-size: 0.82rem; color: var(--text-muted); }
+.recipe-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.25rem; }
+.recipe-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.rcp-dish-name { font-size: 1.15rem; font-weight: 700; }
+.rcp-kpis { display: flex; gap: 0.75rem; }
+.rcp-badge { background: var(--bg-surface-elevated); padding: 0.35rem 0.75rem; border-radius: var(--radius-full); font-size: 0.82rem; }
+.recipe-table { width: 100%; border-collapse: collapse; }
+.recipe-table th { background: var(--bg-surface-elevated); padding: 0.75rem 1rem; font-size: 0.78rem; text-align: left; color: var(--text-muted); }
+.recipe-table td { padding: 0.75rem 1rem; font-size: 0.85rem; border-bottom: 1px solid var(--border-subtle); }

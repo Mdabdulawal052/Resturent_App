@@ -1,0 +1,73 @@
+<div class="kds-panel">
+  <div class="panel-header">
+    <div>
+      <h2><i class="fa-solid fa-kitchen-set text-amber"></i> Kitchen Display System (KDS)</h2>
+      <span class="subtitle">Live Kitchen Order Ticket (KOT) station routing with elapsed timers</span>
+    </div>
+    <div class="kds-filter-tabs">
+      <button [class.active]="stationFilter() === 'All'" (click)="stationFilter.set('All')">All Stations</button>
+      <button [class.active]="stationFilter() === 'Main Kitchen'" (click)="stationFilter.set('Main Kitchen')">Main Kitchen</button>
+      <button [class.active]="stationFilter() === 'Grill & Fry'" (click)="stationFilter.set('Grill & Fry')">Grill & Fry</button>
+    </div>
+  </div>
+
+  <div *ngIf="isLoading()" class="loading-state" style="text-align: center; padding: 4rem 1rem; color: var(--text-muted);">
+    <i class="fa-solid fa-circle-notch fa-spin fa-2x text-amber" style="margin-bottom: 0.75rem;"></i>
+    <p>Loading live kitchen orders from database...</p>
+  </div>
+
+  <div *ngIf="!isLoading() && filteredKots().length === 0" class="empty-kds" style="text-align: center; padding: 5rem 1rem; color: var(--text-muted);">
+    <i class="fa-solid fa-circle-check fa-3x text-emerald" style="margin-bottom: 1rem;"></i>
+    <h3 style="color: var(--text-main); margin-bottom: 0.35rem;">Kitchen Queue is Clear!</h3>
+    <p>All active tickets have been prepared and served.</p>
+  </div>
+
+  <div class="kds-tickets-grid" *ngIf="!isLoading() && filteredKots().length > 0">
+    <div *ngFor="let kot of filteredKots()" class="kds-card" [ngClass]="{
+      'kds-queued': kot.status === 'Queued',
+      'kds-preparing': kot.status === 'Preparing',
+      'kds-ready': kot.status === 'Ready'
+    }">
+      <div class="kds-card-header">
+        <div>
+          <span class="kot-number">{{ kot.kotNo }}</span>
+          <span class="kot-type-badge">{{ kot.orderType }}</span>
+        </div>
+        <div class="kot-timer" [class.timer-urgent]="kot.elapsedMinutes > 15">
+          <i class="fa-regular fa-clock"></i> {{ kot.elapsedMinutes }}m ago
+        </div>
+      </div>
+
+      <div class="kds-card-meta">
+        <span><strong>Table:</strong> {{ kot.tableNo || 'N/A' }}</span>
+        <span><strong>Station:</strong> {{ kot.station }}</span>
+      </div>
+
+      <div class="kds-card-items">
+        <div *ngFor="let item of kot.items" class="kds-item-row">
+          <div class="kds-qty">{{ item.quantity }}x</div>
+          <div class="kds-name-block">
+            <span class="kds-item-name">{{ item.name }}</span>
+            <span class="kds-variant" *ngIf="item.variant">{{ item.variant }}</span>
+            <span class="kds-mod-tag" *ngFor="let m of item.modifiers">+ {{ m }}</span>
+            <span class="kds-note" *ngIf="item.notes"><i class="fa-solid fa-pencil"></i> {{ item.notes }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kds-card-footer">
+        <span class="badge" [ngClass]="{
+          'badge-rose': kot.status === 'Queued',
+          'badge-amber': kot.status === 'Preparing',
+          'badge-emerald': kot.status === 'Ready'
+        }">{{ kot.status }}</span>
+
+        <button class="kds-btn-action" (click)="advanceStatus(kot)">
+          <span *ngIf="kot.status === 'Queued'"><i class="fa-solid fa-play"></i> Start Preparing</span>
+          <span *ngIf="kot.status === 'Preparing'"><i class="fa-solid fa-check"></i> Mark Ready</span>
+          <span *ngIf="kot.status === 'Ready'"><i class="fa-solid fa-bell-concierge"></i> Mark Served</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,232 @@
+<div class="shift-wrapper">
+  <!-- Toast -->
+  <div *ngIf="toastMessage()" class="shift-toast">
+    <i class="fa-solid fa-circle-check text-emerald"></i>
+    <span>{{ toastMessage() }}</span>
+  </div>
+
+  <!-- CONTROL PANEL -->
+  <header class="shift-header">
+    <div>
+      <div class="title-chip">
+        <i class="fa-solid fa-vault text-amber"></i> Cash Shift & Drawer Reconciliation
+      </div>
+      <div class="header-sub">
+        <span>Session #{{ currentShiftId() }}</span> • 
+        <span>Cashier: <strong>{{ cashierName() }}</strong></span> • 
+        <span class="badge badge-emerald">Drawer Open</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-secondary" (click)="openBazaarExpenseModal()">
+        <i class="fa-solid fa-receipt text-rose"></i> Kitchen Bazaar / Petty Cash Out
+      </button>
+      <button class="btn btn-primary" (click)="onCloseShift()">
+        <i class="fa-solid fa-lock"></i> Close Shift & Count Notes
+      </button>
+    </div>
+  </header>
+
+  <!-- KPI SUMMARY -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-blue-soft">
+        <i class="fa-solid fa-cash-register text-blue"></i>
+      </div>
+      <div>
+        <div class="kpi-label">Opening Float</div>
+        <div class="kpi-value">৳{{ shiftFloat() | number }}</div>
+        <div class="kpi-sub">Drawer starting change</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon bg-emerald-soft">
+        <i class="fa-solid fa-money-bill-1-wave text-emerald"></i>
+      </div>
+      <div>
+        <div class="kpi-label">Today's Cash Sales</div>
+        <div class="kpi-value text-emerald">৳{{ todayCashSales() | number }}</div>
+        <div class="kpi-sub">Total cash orders collected</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon bg-rose-soft">
+        <i class="fa-solid fa-bag-shopping text-rose"></i>
+      </div>
+      <div>
+        <div class="kpi-label">Petty Cash / Bazaar Out</div>
+        <div class="kpi-value text-rose">-৳{{ pettyCashOut() | number }}</div>
+        <div class="kpi-sub">Emergency kitchen supplies</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon bg-amber-soft">
+        <i class="fa-solid fa-calculator text-amber"></i>
+      </div>
+      <div>
+        <div class="kpi-label">Expected Drawer Cash</div>
+        <div class="kpi-value text-amber">৳{{ expectedCash() | number }}</div>
+        <div class="kpi-sub">Float + Sales - Expenses</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BANGLADESH BANKNOTE DENOMINATION COUNTER -->
+  <div class="denomination-panel">
+    <div class="panel-header">
+      <div>
+        <h3><i class="fa-solid fa-money-bills text-amber"></i> Bangladesh Banknote Denomination Counter (টাকার হিসাব)</h3>
+        <span class="sub-text">Count and enter physical banknotes present in drawer at shift closing</span>
+      </div>
+
+      <div class="variance-badge" [ngClass]="{
+        'badge-emerald': variance() === 0,
+        'badge-amber': variance() > 0,
+        'badge-rose': variance() < 0
+      }">
+        <span *ngIf="variance() === 0"><i class="fa-solid fa-circle-check"></i> Balanced (৳0.00)</span>
+        <span *ngIf="variance() > 0"><i class="fa-solid fa-arrow-trend-up"></i> Over: +৳{{ variance() | number }}</span>
+        <span *ngIf="variance() < 0"><i class="fa-solid fa-arrow-trend-down"></i> Short: ৳{{ variance() | number }}</span>
+      </div>
+    </div>
+
+    <div class="denomination-grid">
+      <div class="denom-card" *ngFor="let d of denominations(); let idx = index">
+        <div class="denom-header">
+          <span class="denom-note">{{ d.label }}</span>
+          <span class="denom-multiplier">×</span>
+        </div>
+        <div class="denom-input-wrap">
+          <input
+            type="number"
+            min="0"
+            [ngModel]="d.count"
+            (ngModelChange)="updateDenominationCount(idx, +$event)"
+            class="denom-input"
+          />
+          <span class="pieces-lbl">pcs</span>
+        </div>
+        <div class="denom-subtotal">৳{{ d.subtotal | number }}</div>
+      </div>
+    </div>
+
+    <!-- Total Comparison Bar -->
+    <div class="reconciliation-bar">
+      <div class="recon-item">
+        <span>Total Counted Banknotes:</span>
+        <strong class="text-large text-emerald">৳{{ totalDenomCash() | number }}</strong>
+      </div>
+      <div class="recon-separator">/</div>
+      <div class="recon-item">
+        <span>Expected System Cash:</span>
+        <strong class="text-large">৳{{ expectedCash() | number }}</strong>
+      </div>
+      <div class="recon-separator">/</div>
+      <div class="recon-item">
+        <span>Drawer Variance:</span>
+        <strong class="text-large" [class.text-rose]="variance() < 0" [class.text-emerald]="variance() >= 0">
+          {{ variance() >= 0 ? '+' : '' }}৳{{ variance() | number }}
+        </strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- PETTY CASH / BAZAAR OUT MODAL -->
+  <div class="modal-backdrop" *ngIf="showBazaarModal()" (click)="showBazaarModal.set(false)">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h2><i class="fa-solid fa-money-bill-transfer text-rose"></i> Kitchen Bazaar / Petty Cash Voucher</h2>
+          <span class="sub-text">Record cash taken from drawer for emergency kitchen supplies</span>
+        </div>
+        <button class="close-btn" (click)="showBazaarModal.set(false)"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="voucher-tag">Voucher: <strong>{{ bazaarVoucherNo() }}</strong></div>
+        <div class="form-group">
+          <label>Voucher Amount (BDT)</label>
+          <input type="number" [(ngModel)]="bazaarAmount" class="form-control text-large" />
+        </div>
+        <div class="form-group">
+          <label>Reason / Expense Category</label>
+          <input type="text" [(ngModel)]="bazaarReason" class="form-control" placeholder="e.g. Eggs, Ice, Coriander, Salt" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showBazaarModal.set(false)">Cancel</button>
+        <button class="btn btn-primary" (click)="submitBazaarExpense()">Record Voucher</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CASHIER SHIFT Z-REPORT MODAL -->
+  <div class="modal-backdrop" *ngIf="showZReportModal()" (click)="showZReportModal.set(false)">
+    <div class="modal-card z-report-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h2><i class="fa-solid fa-file-invoice text-amber"></i> Daily Shift Z-Report</h2>
+          <span class="sub-text">Official cashier session reconciliation statement</span>
+        </div>
+        <button class="close-btn" (click)="showZReportModal.set(false)"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="z-report-paper" id="printable-z-report">
+          <div class="z-header text-center">
+            <h3>সুলতান'স গ্র্যান্ড ডাইন অ্যান্ড ক্যাফে</h3>
+            <p>Sultan's Grand Dine & Café • Dhanmondi Branch</p>
+            <p>BIN: 002345678-0101 • Dhaka South</p>
+            <h4>=== CASHIER SHIFT Z-REPORT ===</h4>
+            <hr />
+          </div>
+
+          <div class="z-meta">
+            <div>Session ID: <strong>#{{ currentShiftId() }}</strong></div>
+            <div>Cashier: <strong>{{ cashierName() }}</strong></div>
+            <div>Terminal: Counter 01 (Main POS)</div>
+            <div>Closed Time: {{ shiftClosedTime() }} (BST)</div>
+          </div>
+          <hr />
+
+          <div class="z-breakdown">
+            <div class="z-line"><span>Opening Float:</span><span>৳{{ shiftFloat() | number }}</span></div>
+            <div class="z-line"><span>Cash Sales:</span><span>৳{{ todayCashSales() | number }}</span></div>
+            <div class="z-line"><span>Petty Cash Out (Bazaar):</span><span>-৳{{ pettyCashOut() | number }}</span></div>
+            <hr />
+            <div class="z-line bold"><span>Expected Drawer Cash:</span><span>৳{{ expectedCash() | number }}</span></div>
+            <div class="z-line bold"><span>Counted Banknotes:</span><span>৳{{ totalDenomCash() | number }}</span></div>
+            <div class="z-line highlight">
+              <span>Variance (Over/Short):</span>
+              <span [class.text-rose]="variance() < 0">{{ variance() >= 0 ? '+' : '' }}৳{{ variance() | number }}</span>
+            </div>
+          </div>
+
+          <hr />
+          <div class="z-denom-summary">
+            <p><strong>Banknote Denomination Summary:</strong></p>
+            <div *ngFor="let d of denominations()">
+              <span *ngIf="d.count > 0">{{ d.label }}: {{ d.count }} pcs = ৳{{ d.subtotal | number }}</span>
+            </div>
+          </div>
+
+          <hr />
+          <div class="z-sign-row">
+            <div>___________________<br/>Cashier Signature</div>
+            <div>___________________<br/>Manager Signature</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showZReportModal.set(false)">Close</button>
+        <button class="btn btn-primary" (click)="printZReport()">
+          <i class="fa-solid fa-print"></i> Print Z-Report
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

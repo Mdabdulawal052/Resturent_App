@@ -1,0 +1,297 @@
+<div class="floor-map-wrapper">
+  <!-- Toast -->
+  <div *ngIf="toastMessage()" class="floor-toast">
+    <i class="fa-solid fa-circle-check text-emerald"></i>
+    <span>{{ toastMessage() }}</span>
+  </div>
+
+  <!-- FLOOR CONTROL PANEL -->
+  <header class="floor-control-panel">
+    <div class="floor-selector-group">
+      <div class="brand-chip">
+        <i class="fa-solid fa-table-cells text-amber"></i> Floor & Tables
+      </div>
+      <!-- Floor tabs -->
+      <div class="floor-tabs">
+        <button
+          *ngFor="let area of diningAreas()"
+          class="floor-tab"
+          [class.active]="selectedAreaId() === area.id"
+          (click)="selectedAreaId.set(area.id)"
+        >
+          <i class="fa-regular fa-building"></i> {{ area.name }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Status Overview Pills -->
+    <div class="status-summary-pills">
+      <div class="status-pill pill-vacant">
+        <span class="dot"></span> Vacant: <strong>{{ vacantCount() }}</strong>
+      </div>
+      <div class="status-pill pill-occupied">
+        <span class="dot"></span> Seated: <strong>{{ occupiedCount() }}</strong>
+      </div>
+      <div class="status-pill pill-cooking">
+        <span class="dot"></span> In Kitchen: <strong>{{ cookingCount() }}</strong>
+      </div>
+      <div class="status-pill pill-billed">
+        <span class="dot"></span> Pre-Billed: <strong>{{ billedCount() }}</strong>
+      </div>
+    </div>
+
+    <!-- Designer Mode Toggle -->
+    <div class="designer-toggle-actions">
+      <button
+        class="btn-designer"
+        [class.active]="isDesignMode()"
+        (click)="toggleDesignMode()"
+      >
+        <i class="fa-solid" [ngClass]="isDesignMode() ? 'fa-check' : 'fa-pen-ruler'"></i>
+        {{ isDesignMode() ? 'Exit & Save Designer' : 'Edit Floor Plan' }}
+      </button>
+    </div>
+  </header>
+
+  <!-- ODOO DESIGNER TOOLBAR (When in Edit Mode) -->
+  <div class="designer-toolbar" *ngIf="isDesignMode()">
+    <div class="palette-tools">
+      <span class="toolbar-label"><i class="fa-solid fa-shapes"></i> Add Table:</span>
+      <button class="palette-btn" (click)="addTable('square')">
+        <i class="fa-regular fa-square"></i> + Square (4 Seats)
+      </button>
+      <button class="palette-btn" (click)="addTable('round')">
+        <i class="fa-regular fa-circle"></i> + Round (2 Seats)
+      </button>
+      <button class="palette-btn" (click)="addTable('rectangle')">
+        <i class="fa-solid fa-rectangle-ad"></i> + Long Table (6 Seats)
+      </button>
+    </div>
+
+    <!-- Selected Table Property Editor -->
+    <div class="table-properties-editor" *ngIf="selectedTableForEdit()">
+      <span class="prop-label">Table:</span>
+      <input type="text" [(ngModel)]="selectedTableForEdit()!.tableNo" class="prop-input" style="width: 70px;" />
+
+      <span class="prop-label">Seats:</span>
+      <select [(ngModel)]="selectedTableForEdit()!.capacity" class="prop-select">
+        <option [value]="2">2 Seats</option>
+        <option [value]="4">4 Seats</option>
+        <option [value]="6">6 Seats</option>
+        <option [value]="8">8 Seats</option>
+        <option [value]="12">12 VIP</option>
+      </select>
+
+      <span class="prop-label">Shape:</span>
+      <select [(ngModel)]="selectedTableForEdit()!.shape" class="prop-select">
+        <option value="square">Square</option>
+        <option value="round">Round</option>
+        <option value="rectangle">Rectangle</option>
+      </select>
+
+      <button class="btn-delete-table" (click)="deleteSelectedTable()" title="Delete Table">
+        <i class="fa-solid fa-trash-can"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- INTERACTIVE CANVAS FLOOR VIEWPORT -->
+  <div
+    class="floor-canvas-viewport"
+    [class.designer-active]="isDesignMode()"
+    (mousemove)="onCanvasMouseMove($event)"
+    (mouseup)="stopDrag()"
+    (mouseleave)="stopDrag()"
+  >
+    <!-- Canvas Grid Area -->
+    <div class="floor-canvas-stage">
+      <div
+        *ngFor="let t of currentTables()"
+        class="interactive-table-item"
+        [ngClass]="[
+          'shape-' + t.shape,
+          'status-' + t.status,
+          selectedTableForEdit()?.id === t.id ? 'is-selected-for-edit' : ''
+        ]"
+        [style.left.px]="t.positionX"
+        [style.top.px]="t.positionY"
+        [style.width.px]="t.width"
+        [style.height.px]="t.height"
+        (mousedown)="startDrag($event, t)"
+        (click)="onTableClick(t)"
+      >
+        <!-- Realistic Chairs around Table Perimeter -->
+        <div class="table-chairs-wrapper">
+          <div
+            *ngFor="let chair of getChairsForTable(t)"
+            class="table-chair"
+            [ngClass]="[
+              'chair-side-' + chair.side,
+              chair.isOccupied ? 'chair-occupied' : 'chair-vacant',
+              'status-' + t.status
+            ]"
+            [ngStyle]="chair.style"
+            [title]="'Seat ' + chair.id + (chair.isOccupied ? ' (Seated)' : ' (Vacant)')"
+          >
+            <div class="chair-backrest"></div>
+            <div class="chair-cushion">
+              <span class="chair-seat-groove"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table Interior Content -->
+        <div class="table-content-card">
+          <div class="table-top-row">
+            <span class="table-id-tag">{{ t.tableNo }}</span>
+            <span class="capacity-pill"><i class="fa-solid fa-users"></i> {{ t.capacity }}</span>
+          </div>
+
+          <!-- Active Seated State Details -->
+          <div class="table-active-meta" *ngIf="t.status !== 'available'">
+            <div class="active-total">৳{{ t.activeOrderTotal | number }}</div>
+            <div class="active-timer">
+              <i class="fa-regular fa-clock"></i> {{ t.activeOrderMinutes }}m
+            </div>
+          </div>
+
+          <!-- Vacant State -->
+          <div class="table-vacant-meta" *ngIf="t.status === 'available'">
+            <span class="vacant-tag"><i class="fa-solid fa-check"></i> Vacant</span>
+          </div>
+
+          <!-- Status Indicator Pill -->
+          <div class="table-status-ribbon">
+            <span class="status-name">{{ t.status === 'cooking' ? 'In Kitchen' : t.status }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
+  <!-- MODAL: OCCUPIED TABLE ACTIONS SHEET                     -->
+  <!-- ======================================================= -->
+  <div class="modal-backdrop" *ngIf="activeActionTable()" (click)="activeActionTable.set(null)">
+    <div class="action-sheet-card" (click)="$event.stopPropagation()">
+      <div class="sheet-header">
+        <div class="sheet-title-group">
+          <h2><i class="fa-solid fa-chair text-amber"></i> {{ activeActionTable()!.tableNo }} ({{ activeActionTable()!.areaName }})</h2>
+          <span class="sheet-status-tag" [ngClass]="'status-' + activeActionTable()!.status">
+            {{ activeActionTable()!.status }}
+          </span>
+        </div>
+        <button class="close-sheet-btn" (click)="activeActionTable.set(null)"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="sheet-body">
+        <div class="sheet-stats-row">
+          <div class="sheet-stat">
+            <div class="stat-lbl">Active Bill (BDT)</div>
+            <div class="stat-val text-amber">৳{{ activeActionTable()!.activeOrderTotal | number }}</div>
+          </div>
+          <div class="sheet-stat">
+            <div class="stat-lbl">Seated Guests</div>
+            <div class="stat-val">{{ activeActionTable()!.guestCount || 3 }} Covers</div>
+          </div>
+          <div class="sheet-stat">
+            <div class="stat-lbl">Dining Duration</div>
+            <div class="stat-val">{{ activeActionTable()!.activeOrderMinutes || 15 }} mins</div>
+          </div>
+        </div>
+
+        <div class="sheet-actions-list">
+          <button class="sheet-action-btn primary" (click)="openTableInPOS(activeActionTable()!)">
+            <i class="fa-solid fa-cash-register"></i>
+            <div>
+              <div class="action-main">Open in POS Terminal</div>
+              <div class="action-desc">Add dishes, modifiers, or settle bill</div>
+            </div>
+          </button>
+
+          <button class="sheet-action-btn" (click)="printPreBill(activeActionTable()!)">
+            <i class="fa-solid fa-receipt text-amber"></i>
+            <div>
+              <div class="action-main">Print Pre-Bill (Pro-forma Check)</div>
+              <div class="action-desc">Issue temporary bill to table before payment</div>
+            </div>
+          </button>
+
+          <button class="sheet-action-btn" (click)="openTransferModal(activeActionTable()!)">
+            <i class="fa-solid fa-arrow-right-arrow-left text-blue"></i>
+            <div>
+              <div class="action-main">Transfer Table</div>
+              <div class="action-desc">Move order and guests to another vacant table</div>
+            </div>
+          </button>
+
+          <button class="sheet-action-btn" (click)="openMergeModal(activeActionTable()!)">
+            <i class="fa-solid fa-object-group text-purple"></i>
+            <div>
+              <div class="action-main">Merge with Another Table</div>
+              <div class="action-desc">Combine party bills for large groups</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
+  <!-- MODAL: TRANSFER TABLE                                   -->
+  <!-- ======================================================= -->
+  <div class="modal-backdrop" *ngIf="showTransferModal()" (click)="showTransferModal.set(false)">
+    <div class="dialog-card" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3><i class="fa-solid fa-arrow-right-arrow-left text-blue"></i> Transfer Table</h3>
+        <button class="close-sheet-btn" (click)="showTransferModal.set(false)"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="dialog-body">
+        <p>Transfer active order from <strong>{{ activeActionTable()?.tableNo }}</strong> to vacant destination:</p>
+        <div class="form-group" style="margin-top: 1rem;">
+          <label>Select Vacant Destination Table:</label>
+          <select [(ngModel)]="targetTransferTableId" class="dialog-select">
+            <option *ngFor="let t of availableTargetTables()" [value]="t.id">
+              {{ t.tableNo }} (Capacity: {{ t.capacity }} seats)
+            </option>
+          </select>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn-cancel" (click)="showTransferModal.set(false)">Cancel</button>
+        <button class="btn-confirm" (click)="executeTransfer()" [disabled]="!targetTransferTableId()">
+          Confirm Transfer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
+  <!-- MODAL: MERGE TABLES                                     -->
+  <!-- ======================================================= -->
+  <div class="modal-backdrop" *ngIf="showMergeModal()" (click)="showMergeModal.set(false)">
+    <div class="dialog-card" (click)="$event.stopPropagation()">
+      <div class="dialog-header">
+        <h3><i class="fa-solid fa-object-group text-purple"></i> Merge Tables</h3>
+        <button class="close-sheet-btn" (click)="showMergeModal.set(false)"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="dialog-body">
+        <p>Merge bill from <strong>{{ activeActionTable()?.tableNo }}</strong> into another active table:</p>
+        <div class="form-group" style="margin-top: 1rem;">
+          <label>Select Target Active Table:</label>
+          <select [(ngModel)]="targetMergeTableId" class="dialog-select">
+            <option *ngFor="let t of occupiedTargetTables()" [value]="t.id">
+              {{ t.tableNo }} (Active Bill: ৳{{ t.activeOrderTotal }})
+            </option>
+          </select>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn-cancel" (click)="showMergeModal.set(false)">Cancel</button>
+        <button class="btn-confirm" (click)="executeMerge()" [disabled]="!targetMergeTableId()">
+          Confirm Merge
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

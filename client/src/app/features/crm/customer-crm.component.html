@@ -1,0 +1,49 @@
+<div class="crm-panel">
+  <div class="panel-header">
+    <div>
+      <h2><i class="fa-solid fa-users text-amber"></i> Customer Directory & Loyalty</h2>
+      <span class="subtitle">Bangladesh mobile directory, delivery zones, and loyalty reward points from database</span>
+    </div>
+  </div>
+
+  <div *ngIf="isLoading()" class="loading-state" style="text-align: center; padding: 4rem 1rem; color: var(--text-muted);">
+    <i class="fa-solid fa-circle-notch fa-spin fa-2x text-amber" style="margin-bottom: 0.75rem;"></i>
+    <p>Loading customers from database...</p>
+  </div>
+
+  <div *ngIf="!isLoading() && customers().length === 0" class="empty-state" style="text-align: center; padding: 4rem 1rem; color: var(--text-muted);">
+    <i class="fa-solid fa-user-xmark fa-2x" style="margin-bottom: 0.75rem;"></i>
+    <p>No customers recorded in database.</p>
+  </div>
+
+  <div class="table-container-card" *ngIf="!isLoading() && customers().length > 0">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Customer Name</th>
+          <th>BD Mobile Number</th>
+          <th>Loyalty Tier</th>
+          <th>Reward Points</th>
+          <th>Default Delivery Address</th>
+          <th>Delivery Zone</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let c of customers()">
+          <td><strong>{{ c.name }}</strong></td>
+          <td><i class="fa-solid fa-phone text-muted"></i> {{ c.phone }}</td>
+          <td>
+            <span class="badge" [ngClass]="{
+              'badge-amber': c.loyaltyTier === 'Gold',
+              'badge-purple': c.loyaltyTier === 'Silver',
+              'badge-blue': c.loyaltyTier === 'Bronze'
+            }">{{ c.loyaltyTier }}</span>
+          </td>
+          <td><strong>{{ c.loyaltyPoints }} pts</strong></td>
+          <td>{{ c.address }}</td>
+          <td>{{ c.zone }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

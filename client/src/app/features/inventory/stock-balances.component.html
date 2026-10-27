@@ -1,0 +1,324 @@
+<div class="inventory-container">
+  <!-- Toast -->
+  <div *ngIf="toastMessage()" class="inv-toast">
+    <i class="fa-solid fa-circle-check text-emerald"></i>
+    <span>{{ toastMessage() }}</span>
+  </div>
+
+  <!-- CONTROL PANEL -->
+  <header class="inv-header">
+    <div class="header-left">
+      <div class="title-chip">
+        <i class="fa-solid fa-boxes-stacked text-amber"></i> Inventory Control
+      </div>
+      <div class="header-sub">Central Kitchen Warehouse (WH-DHN-MAIN)</div>
+    </div>
+
+    <div class="header-right">
+      <div class="tab-toggle">
+        <button [class.active]="activeTab() === 'balances'" (click)="activeTab.set('balances')">
+          <i class="fa-solid fa-layer-group"></i> Stock Balances
+        </button>
+        <button [class.active]="activeTab() === 'ledger'" (click)="activeTab.set('ledger')">
+          <i class="fa-solid fa-clock-rotate-left"></i> Stock Ledger (Audit)
+        </button>
+      </div>
+
+      <div class="view-switchers" *ngIf="activeTab() === 'balances'">
+        <button class="view-btn" [class.active]="activeView() === 'list'" (click)="activeView.set('list')">
+          <i class="fa-solid fa-list-ul"></i>
+        </button>
+        <button class="view-btn" [class.active]="activeView() === 'kanban'" (click)="activeView.set('kanban')">
+          <i class="fa-solid fa-table-cells-large"></i>
+        </button>
+      </div>
+
+      <button class="btn btn-primary" (click)="reorderItem(inventoryItems()[0])">
+        <i class="fa-solid fa-cart-plus"></i> Go to Procurement (PO)
+      </button>
+    </div>
+  </header>
+
+  <!-- KPI SUMMARY -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-amber-soft">
+        <i class="fa-solid fa-coins text-amber"></i>
+      </div>
+      <div>
+        <div class="kpi-label">Total Stock Valuation (BDT)</div>
+        <div class="kpi-value">৳{{ totalValuation() | number }}</div>
+        <div class="kpi-sub">Weighted moving average cost</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon bg-rose-soft">
+        <i class="fa-solid fa-triangle-exclamation text-rose"></i>
+      </div>
+      <div>
+        <div class="kpi-label">Low Stock Alerts</div>
+        <div class="kpi-value text-rose">{{ lowStockCount() }} Items</div>
+        <div class="kpi-sub">At or below reorder threshold</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon bg-emerald-soft">
+        <i class="fa-solid fa-cubes-stacked text-emerald"></i>
+      </div>
+      <div>
+        <div class="kpi-label">Optimal Stocked Items</div>
+        <div class="kpi-value">{{ healthyStockCount() }} Items</div>
+        <div class="kpi-sub">Healthy kitchen buffer</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon bg-blue-soft">
+        <i class="fa-solid fa-carrot text-blue"></i>
+      </div>
+      <div>
+        <div class="kpi-label">Active Raw Ingredients</div>
+        <div class="kpi-value">{{ inventoryItems().length }} SKU</div>
+        <div class="kpi-sub">Mutton, Polao rice, Spices, Ghee</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: STOCK BALANCES -->
+  <div *ngIf="activeTab() === 'balances'" class="balances-view">
+    <!-- Filter bar -->
+    <div class="inv-filter-bar">
+      <div class="category-tabs">
+        <button
+          *ngFor="let cat of categories"
+          class="cat-tab"
+          [class.active]="selectedCategory() === cat"
+          (click)="selectedCategory.set(cat)"
+        >
+          {{ cat }}
+        </button>
+      </div>
+
+      <div class="filter-controls">
+        <button
+          class="low-stock-toggle"
+          [class.active]="onlyLowStock()"
+          (click)="onlyLowStock.set(!onlyLowStock())"
+        >
+          <i class="fa-solid fa-filter"></i> Low Stock Alerts Only
+        </button>
+
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input
+            type="text"
+            placeholder="Filter ingredient..."
+            [ngModel]="searchQuery()"
+            (ngModelChange)="searchQuery.set($event)"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- LIST VIEW -->
+    <div class="table-card" *ngIf="activeView() === 'list'">
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th>Ingredient / Material</th>
+            <th>Category</th>
+            <th>Current Stock</th>
+            <th>Min. Reorder Level</th>
+            <th>Average Cost (BDT)</th>
+            <th>Total Valuation (BDT)</th>
+            <th>Stock Health</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of filteredItems()">
+            <td>
+              <div class="item-name-cell">
+                <i class="fa-solid fa-box text-amber"></i>
+                <strong>{{ item.name }}</strong>
+              </div>
+            </td>
+            <td><span class="category-chip">{{ item.category || 'Kitchen Ingredient' }}</span></td>
+            <td>
+              <strong [class.text-rose]="item.currentStock <= item.reorderLevel">
+                {{ item.currentStock }} {{ item.unit }}
+              </strong>
+            </td>
+            <td>{{ item.reorderLevel }} {{ item.unit }}</td>
+            <td>৳{{ item.avgCost | number }}</td>
+            <td><strong class="text-amber">৳{{ (item.currentStock * item.avgCost) | number }}</strong></td>
+            <td>
+              <div class="health-cell">
+                <div class="progress-bar-bg">
+                  <div
+                    class="progress-bar-fill"
+                    [style.width.%]="item.currentStock <= item.reorderLevel ? 30 : 85"
+                    [class.bar-danger]="item.currentStock <= item.reorderLevel"
+                  ></div>
+                </div>
+                <span class="badge" [ngClass]="item.currentStock > item.reorderLevel ? 'badge-emerald' : 'badge-rose'">
+                  {{ item.currentStock > item.reorderLevel ? 'Optimal' : 'Reorder Needed' }}
+                </span>
+              </div>
+            </td>
+            <td style="text-align: right;">
+              <div class="table-actions">
+                <button class="btn-sm btn-secondary" (click)="openAdjustment(item)" title="Physical Count Adjustment">
+                  <i class="fa-solid fa-sliders"></i> Count
+                </button>
+                <button *ngIf="item.currentStock <= item.reorderLevel" class="btn-sm btn-primary" (click)="reorderItem(item)" title="Create PO">
+                  <i class="fa-solid fa-cart-shopping"></i> Reorder
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- KANBAN VIEW -->
+    <div class="kanban-grid" *ngIf="activeView() === 'kanban'">
+      <div class="kanban-card" *ngFor="let item of filteredItems()">
+        <div class="kanban-top">
+          <span class="category-chip">{{ item.category || 'Ingredient' }}</span>
+          <span class="badge" [ngClass]="item.currentStock > item.reorderLevel ? 'badge-emerald' : 'badge-rose'">
+            {{ item.currentStock > item.reorderLevel ? 'In Stock' : 'Low Stock' }}
+          </span>
+        </div>
+
+        <h3 class="kanban-item-title">{{ item.name }}</h3>
+
+        <div class="stock-stats-row">
+          <div>
+            <div class="stat-sub">On-Hand Stock</div>
+            <div class="stat-main" [class.text-rose]="item.currentStock <= item.reorderLevel">
+              {{ item.currentStock }} <span class="unit-text">{{ item.unit }}</span>
+            </div>
+          </div>
+          <div>
+            <div class="stat-sub">Reorder Threshold</div>
+            <div class="stat-sec">{{ item.reorderLevel }} {{ item.unit }}</div>
+          </div>
+        </div>
+
+        <div class="progress-bar-bg">
+          <div
+            class="progress-bar-fill"
+            [style.width.%]="item.currentStock <= item.reorderLevel ? 30 : 85"
+            [class.bar-danger]="item.currentStock <= item.reorderLevel"
+          ></div>
+        </div>
+
+        <div class="kanban-bottom">
+          <div>
+            <span class="stat-sub">Valuation:</span>
+            <strong class="text-amber">৳{{ (item.currentStock * item.avgCost) | number }}</strong>
+          </div>
+          <div class="kanban-actions">
+            <button class="btn-sm btn-secondary" (click)="openAdjustment(item)">Adjust</button>
+            <button class="btn-sm btn-primary" (click)="reorderItem(item)">PO</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: STOCK LEDGER AUDIT LOG -->
+  <div *ngIf="activeTab() === 'ledger'" class="ledger-view">
+    <div class="table-card">
+      <div class="table-card-header">
+        <div>
+          <h3><i class="fa-solid fa-list-check text-amber"></i> Immutable Stock Movement Ledger</h3>
+          <span class="sub-text">Every inward purchase, POS kitchen consumption, and wastage variance</span>
+        </div>
+      </div>
+
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Ingredient</th>
+            <th>Transaction Type</th>
+            <th>Reference Code</th>
+            <th style="text-align: right;">Quantity Change</th>
+            <th style="text-align: right;">Unit Cost (BDT)</th>
+            <th style="text-align: right;">Balance After</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let l of stockLedger()">
+            <td>{{ l.timestamp }}</td>
+            <td><strong>{{ l.itemName }}</strong></td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'badge-emerald': l.txnType === 'PO Receipt',
+                'badge-blue': l.txnType === 'Order Consumption',
+                'badge-rose': l.txnType === 'Wastage',
+                'badge-amber': l.txnType === 'Manual Adjustment'
+              }">
+                {{ l.txnType }}
+              </span>
+            </td>
+            <td><code>{{ l.referenceNo }}</code></td>
+            <td style="text-align: right;">
+              <strong [class.text-emerald]="l.qtyChange > 0" [class.text-rose]="l.qtyChange < 0">
+                {{ l.qtyChange > 0 ? '+' : '' }}{{ l.qtyChange }}
+              </strong>
+            </td>
+            <td style="text-align: right;">৳{{ l.unitCost }}</td>
+            <td style="text-align: right;"><strong>{{ l.balanceAfter }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PHYSICAL ADJUSTMENT MODAL -->
+  <div class="modal-backdrop" *ngIf="showAdjustmentModal()" (click)="showAdjustmentModal.set(false)">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h2><i class="fa-solid fa-sliders text-amber"></i> Physical Count Adjustment</h2>
+          <span class="sub-text">Update actual kitchen stock after physical shelf audit</span>
+        </div>
+        <button class="close-btn" (click)="showAdjustmentModal.set(false)"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="adjust-meta-box">
+          <div class="item-name">{{ adjustingItem()?.name }}</div>
+          <div class="current-stock-info">
+            System Current Quantity: <strong>{{ adjustingItem()?.currentStock }} {{ adjustingItem()?.unit }}</strong>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Actual Physical Count ({{ adjustingItem()?.unit }})</label>
+          <input type="number" [(ngModel)]="adjustmentCount" class="form-control text-large" />
+        </div>
+
+        <div class="form-group">
+          <label>Variance Adjustment Reason</label>
+          <select [(ngModel)]="adjustmentReason" class="form-control">
+            <option value="Physical Count Correction">Physical Count Correction / Shelf Audit</option>
+            <option value="Kitchen Spoilage & Damaged Produce">Kitchen Spoilage & Damaged Produce</option>
+            <option value="Preparation Trimming & Yield Loss">Preparation Trimming & Yield Loss</option>
+            <option value="Expired Shelf Life">Expired Shelf Life</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showAdjustmentModal.set(false)">Cancel</button>
+        <button class="btn btn-primary" (click)="saveAdjustment()">Save Stock Adjustment</button>
+      </div>
+    </div>
+  </div>
+</div>

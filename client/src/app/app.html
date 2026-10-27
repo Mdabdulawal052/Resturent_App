@@ -1,0 +1,72 @@
+<div class="pos-app-wrapper">
+  <!-- TOP APP HEADER -->
+  <header class="app-header">
+    <div class="brand-group">
+      <div class="brand-logo">
+        <i class="fa-solid fa-crown text-amber"></i>
+      </div>
+      <div>
+        <div class="brand-title">{{ restaurantName }}</div>
+        <div class="brand-sub">
+          <span>{{ branchName }}</span>
+          <span class="bin-badge">BIN: {{ restaurantBIN }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Cashier & Shift Badge -->
+    <div class="shift-status-pill">
+      <div class="status-indicator"></div>
+      <div class="shift-info">
+        <div class="shift-name"><i class="fa-solid fa-user-circle"></i> {{ cashierName }}</div>
+        <div class="shift-meta">Float: ৳{{ shiftFloat() | number }} | Counter 01</div>
+      </div>
+    </div>
+
+    <!-- Digital Clock -->
+    <div class="clock-display">
+      <i class="fa-regular fa-clock text-amber"></i>
+      <span>{{ currentTime() | date:'hh:mm:ss a' }}</span>
+      <span class="timezone-badge">BST (Asia/Dhaka)</span>
+    </div>
+
+    <!-- Module Navigation Pills -->
+    <nav class="nav-pills">
+      <a routerLink="/pos" routerLinkActive="active">
+        <i class="fa-solid fa-cash-register"></i> POS Terminal
+      </a>
+      <a routerLink="/kds" routerLinkActive="active">
+        <i class="fa-solid fa-kitchen-set"></i> Kitchen (KDS)
+      </a>
+      <a routerLink="/tables" routerLinkActive="active">
+        <i class="fa-solid fa-table"></i> Tables & Floor
+      </a>
+      <a routerLink="/bookings" routerLinkActive="active">
+        <i class="fa-solid fa-calendar-check"></i> Bookings Desk
+      </a>
+      <a routerLink="/menu" routerLinkActive="active">
+        <i class="fa-solid fa-utensils"></i> Menu & BOM
+      </a>
+      <a routerLink="/purchasing" routerLinkActive="active">
+        <i class="fa-solid fa-truck-ramp-box"></i> Procurement (PO)
+      </a>
+      <a routerLink="/inventory" routerLinkActive="active">
+        <i class="fa-solid fa-boxes-stacked"></i> Inventory
+      </a>
+      <a routerLink="/shifts" routerLinkActive="active">
+        <i class="fa-solid fa-vault"></i> Shifts & Cash
+      </a>
+      <a routerLink="/crm" routerLinkActive="active">
+        <i class="fa-solid fa-users"></i> CRM & Loyalty
+      </a>
+      <a routerLink="/reports" routerLinkActive="active">
+        <i class="fa-solid fa-chart-line"></i> VAT & Reports
+      </a>
+    </nav>
+  </header>
+
+  <!-- MAIN ROUTED VIEWPORT -->
+  <main class="app-viewport">
+    <router-outlet></router-outlet>
+  </main>
+</div>

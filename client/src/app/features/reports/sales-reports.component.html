@@ -1,0 +1,326 @@
+<div class="reports-container">
+  <!-- CONTROL PANEL / HEADER -->
+  <header class="rep-header">
+    <div class="header-left">
+      <div class="title-chip">
+        <i class="fa-solid fa-chart-line text-amber"></i> Financial & Operational Reports
+      </div>
+      <div class="header-sub">
+        <span>Sultan's Grand Dine & Café</span> • 
+        <span class="bin-text">BIN: 002345678-0101</span> • 
+        <span>Dhaka South Commissionerate</span>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="period-toggle">
+        <button [class.active]="selectedPeriod() === 'today'" (click)="selectedPeriod.set('today')">Today</button>
+        <button [class.active]="selectedPeriod() === 'week'" (click)="selectedPeriod.set('week')">Last 7 Days</button>
+        <button [class.active]="selectedPeriod() === 'month'" (click)="selectedPeriod.set('month')">This Month</button>
+      </div>
+
+      <button class="btn btn-secondary" (click)="exportCSV()">
+        <i class="fa-solid fa-file-csv"></i> Export CSV
+      </button>
+      <button class="btn btn-primary" (click)="printReport()">
+        <i class="fa-solid fa-print"></i> Print Official Report
+      </button>
+    </div>
+  </header>
+
+  <!-- TAB SWITCHERS -->
+  <div class="report-tabs-bar">
+    <button class="rep-tab" [class.active]="activeTab() === 'sales'" (click)="activeTab.set('sales')">
+      <i class="fa-solid fa-cash-register"></i> Sales & Revenue KPIs
+    </button>
+    <button class="rep-tab" [class.active]="activeTab() === 'vat'" (click)="activeTab.set('vat')">
+      <i class="fa-solid fa-receipt"></i> NBR Mushak 6.3 VAT
+    </button>
+    <button class="rep-tab" [class.active]="activeTab() === 'payments'" (click)="activeTab.set('payments')">
+      <i class="fa-solid fa-mobile-screen"></i> Payment Split (bKash/Nagad/Cash)
+    </button>
+    <button class="rep-tab" [class.active]="activeTab() === 'foodcost'" (click)="activeTab.set('foodcost')">
+      <i class="fa-solid fa-utensils"></i> Food Costing & BOM
+    </button>
+    <button class="rep-tab" [class.active]="activeTab() === 'procurement'" (click)="activeTab.set('procurement')">
+      <i class="fa-solid fa-truck-ramp-box"></i> Procurement Spend
+    </button>
+  </div>
+
+  <!-- TOP KPI CARDS (ALWAYS VISIBLE) -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-amber-soft">
+        <i class="fa-solid fa-coins text-amber"></i>
+      </div>
+      <div>
+        <div class="kpi-label">Gross Revenue</div>
+        <div class="kpi-value text-amber">৳{{ grossRevenue() | number }}</div>
+        <div class="kpi-sub">All dining & takeaway orders</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon bg-emerald-soft">
+        <i class="fa-solid fa-hand-holding-dollar text-emerald"></i>
+      </div>
+      <div>
+        <div class="kpi-label">Net Sales (Pre-VAT)</div>
+        <div class="kpi-value">৳{{ netSales() | number }}</div>
+        <div class="kpi-sub">Turnover before tax & rebate</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon bg-blue-soft">
+        <i class="fa-solid fa-ticket text-blue"></i>
+      </div>
+      <div>
+        <div class="kpi-label">Total Orders Settled</div>
+        <div class="kpi-value">{{ totalOrders() }} Tickets</div>
+        <div class="kpi-sub">AOV: ৳{{ averageTicket() | number }} per table</div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon bg-purple-soft">
+        <i class="fa-solid fa-landmark text-purple"></i>
+      </div>
+      <div>
+        <div class="kpi-label">NBR VAT Collected</div>
+        <div class="kpi-value">৳{{ vatCollected() | number }}</div>
+        <div class="kpi-sub">Mushak 6.3 payable balance</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 1: SALES & REVENUE -->
+  <div *ngIf="activeTab() === 'sales'" class="tab-content-box">
+    <div class="analytics-split">
+      <div class="table-card flex-2">
+        <div class="card-title-bar">
+          <h3><i class="fa-solid fa-chart-column text-amber"></i> Sales Channel Contribution</h3>
+        </div>
+        <table class="rep-table">
+          <thead>
+            <tr>
+              <th>Order Channel</th>
+              <th>Orders</th>
+              <th>Avg Ticket</th>
+              <th>Total Revenue (BDT)</th>
+              <th>Share</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <i class="fa-solid fa-utensils text-blue"></i>
+                <strong>Dine-In Hall & Rooftop</strong>
+              </td>
+              <td>112</td>
+              <td>৳950</td>
+              <td><strong>৳106,400</strong></td>
+              <td><span class="badge badge-emerald">71.6%</span></td>
+            </tr>
+            <tr>
+              <td>
+                <i class="fa-solid fa-bag-shopping text-amber"></i>
+                <strong>Takeaway Counter 2</strong>
+              </td>
+              <td>48</td>
+              <td>৳520</td>
+              <td><strong>৳24,960</strong></td>
+              <td><span class="badge badge-amber">16.8%</span></td>
+            </tr>
+            <tr>
+              <td>
+                <i class="fa-solid fa-motorcycle text-rose"></i>
+                <strong>Delivery (Pathao / Foodpanda)</strong>
+              </td>
+              <td>24</td>
+              <td>৳714</td>
+              <td><strong>৳17,140</strong></td>
+              <td><span class="badge badge-blue">11.6%</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card-summary-box flex-1">
+        <h3><i class="fa-solid fa-calculator text-emerald"></i> Fiscal Summary</h3>
+        <div class="summary-line">
+          <span>Gross Food & Beverage:</span>
+          <strong>৳{{ grossRevenue() | number }}</strong>
+        </div>
+        <div class="summary-line">
+          <span>Less: Promotional Discounts:</span>
+          <span class="text-rose">-৳4,200</span>
+        </div>
+        <div class="summary-line">
+          <span>Plus: Service Charge (10%):</span>
+          <span>+৳{{ serviceCharge() | number }}</span>
+        </div>
+        <div class="summary-line">
+          <span>Plus: NBR VAT (Mushak 6.3):</span>
+          <span>+৳{{ vatCollected() | number }}</span>
+        </div>
+        <div class="summary-line total-highlight">
+          <span>Final Register Collection:</span>
+          <strong class="text-amber">৳{{ (grossRevenue() + serviceCharge()) | number }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: NBR MUSHAK 6.3 VAT REPORT -->
+  <div *ngIf="activeTab() === 'vat'" class="tab-content-box">
+    <div class="mushak-header-banner">
+      <div class="nbr-logo">
+        <i class="fa-solid fa-scale-balanced fa-2x text-amber"></i>
+      </div>
+      <div>
+        <h2>গণপ্রজাতন্ত্রী বাংলাদেশ সরকার • জাতীয় রাজস্ব বোর্ড (NBR)</h2>
+        <h3>কর চালানপত্র (মূসক-৬.৩) / NBR Mushak 6.3 Restaurant VAT Schedule</h3>
+        <p>সিল ও স্বাক্ষরসহ রেস্টুরেন্ট চালান রেকর্ড | বিধি ৪০ এর উপ-বিধি (১) এর দফা (গ) দ্রষ্টব্য</p>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <table class="rep-table">
+        <thead>
+          <tr>
+            <th>Tax Schedule / Classification</th>
+            <th>Applicable Rate</th>
+            <th style="text-align: right;">Taxable Base (BDT)</th>
+            <th style="text-align: right;">VAT Generated (BDT)</th>
+            <th style="text-align: right;">Input Rebate</th>
+            <th style="text-align: right;">Net VAT Payable (BDT)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let v of vatRecords()">
+            <td>
+              <i class="fa-solid fa-shield-halved text-emerald"></i>
+              <strong>{{ v.category }}</strong>
+            </td>
+            <td><span class="badge badge-amber">{{ v.rate }}</span></td>
+            <td style="text-align: right;">৳{{ v.taxableBase | number }}</td>
+            <td style="text-align: right;">৳{{ v.vatPayable | number }}</td>
+            <td style="text-align: right;">৳{{ v.rebate | number }}</td>
+            <td style="text-align: right;"><strong class="text-emerald">৳{{ v.netPayable | number }}</strong></td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr class="tfoot-row">
+            <td colspan="2"><strong>Total NBR VAT Liability:</strong></td>
+            <td style="text-align: right;"><strong>৳148,500</strong></td>
+            <td style="text-align: right;"><strong>৳{{ totalVatPayable() | number }}</strong></td>
+            <td style="text-align: right;">৳0.00</td>
+            <td style="text-align: right;"><strong class="text-amber text-large">৳{{ totalVatPayable() | number }}</strong></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 3: PAYMENT SPLIT (BANGLADESH GATEWAYS) -->
+  <div *ngIf="activeTab() === 'payments'" class="tab-content-box">
+    <div class="payment-grid">
+      <div class="payment-card" *ngFor="let p of paymentsBreakdown()">
+        <div class="payment-card-top">
+          <div class="pay-icon" [style.background]="p.color + '22'" [style.color]="p.color">
+            <i class="fa-solid" [ngClass]="p.icon"></i>
+          </div>
+          <div>
+            <div class="pay-name">{{ p.method }}</div>
+            <div class="pay-count">{{ p.trxCount }} Completed Transactions</div>
+          </div>
+        </div>
+
+        <div class="pay-amount">৳{{ p.amount | number }}</div>
+
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" [style.width.%]="p.percentage" [style.background]="p.color"></div>
+        </div>
+
+        <div class="pay-footer">
+          <span>Channel Share:</span>
+          <strong>{{ p.percentage }}% of Total Sales</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: FOOD COSTING & RECIPE MARGINS -->
+  <div *ngIf="activeTab() === 'foodcost'" class="tab-content-box">
+    <div class="table-card">
+      <div class="card-title-bar">
+        <div>
+          <h3><i class="fa-solid fa-burger text-amber"></i> Recipe BOM Food Cost & Gross Margin</h3>
+          <span class="sub-text">Theoretical cost of ingredients consumed vs POS selling price</span>
+        </div>
+      </div>
+
+      <table class="rep-table">
+        <thead>
+          <tr>
+            <th>Menu Item</th>
+            <th>Category</th>
+            <th style="text-align: right;">Portions Sold</th>
+            <th style="text-align: right;">Revenue (BDT)</th>
+            <th style="text-align: right;">Recipe BOM Cost</th>
+            <th style="text-align: right;">Gross Margin %</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of menuCosting()">
+            <td><strong>{{ item.name }}</strong></td>
+            <td><span class="badge badge-blue">{{ item.category }}</span></td>
+            <td style="text-align: right;">{{ item.unitsSold }}</td>
+            <td style="text-align: right;">৳{{ item.revenue | number }}</td>
+            <td style="text-align: right;">৳{{ item.recipeCost }}</td>
+            <td style="text-align: right;">
+              <strong class="text-emerald">{{ item.marginPercent }}% Margin</strong>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 5: PROCUREMENT SPEND -->
+  <div *ngIf="activeTab() === 'procurement'" class="tab-content-box">
+    <div class="table-card">
+      <div class="card-title-bar">
+        <div>
+          <h3><i class="fa-solid fa-truck-fast text-amber"></i> Procurement Spend by Supplier</h3>
+          <span class="sub-text">Total capital committed to raw kitchen ingredients and wholesale hubs</span>
+        </div>
+        <div class="total-spend-pill">
+          Total Sourcing Spend: <strong class="text-amber">৳{{ totalProcurementSpend() | number }}</strong>
+        </div>
+      </div>
+
+      <table class="rep-table">
+        <thead>
+          <tr>
+            <th>Supplier Name</th>
+            <th>Sourcing Market / Hub</th>
+            <th>Completed POs</th>
+            <th style="text-align: right;">Total Spend (BDT)</th>
+            <th style="text-align: right;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of supplierSpend()">
+            <td><strong>{{ s.supplier }}</strong></td>
+            <td><i class="fa-solid fa-location-dot text-muted"></i> {{ s.hub }}</td>
+            <td>{{ s.totalOrders }} Purchase Orders</td>
+            <td style="text-align: right;"><strong class="text-amber">৳{{ s.spendBDT | number }}</strong></td>
+            <td style="text-align: right;"><span class="badge badge-emerald">{{ s.status }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

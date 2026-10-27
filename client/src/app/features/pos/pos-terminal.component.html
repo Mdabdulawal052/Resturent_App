@@ -1,0 +1,520 @@
+<div class="pos-grid">
+  <!-- Toast -->
+  <div *ngIf="toastMessage()" class="pos-toast">
+    <i class="fa-solid fa-circle-check text-emerald"></i>
+    <span>{{ toastMessage() }}</span>
+  </div>
+
+  <!-- Left: Catalog & Product Grid -->
+  <div class="pos-catalog-panel">
+    <!-- Controls Row -->
+    <div class="catalog-top-bar">
+      <div class="order-type-tabs">
+        <button 
+          *ngFor="let type of orderTypes" 
+          [class.selected]="selectedOrderType() === type"
+          (click)="selectedOrderType.set(type)">
+          <i class="fa-solid" [ngClass]="{
+            'fa-chair': type === 'Dine-In',
+            'fa-bag-shopping': type === 'Takeaway',
+            'fa-motorcycle': type === 'Delivery',
+            'fa-bolt': type === 'Quick Sale'
+          }"></i>
+          {{ type }}
+        </button>
+      </div>
+
+      <div class="table-selector-pill" *ngIf="selectedOrderType() === 'Dine-In'">
+        <i class="fa-solid fa-chair text-amber"></i>
+        <span>Table: <strong>{{ selectedTable()?.tableNo || 'No Table' }}</strong></span>
+        <button class="btn-xs" (click)="goToTables()">
+          <i class="fa-solid fa-map-location-dot"></i> Change
+        </button>
+      </div>
+
+      <div class="search-input-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input 
+          type="text" 
+          placeholder="Search dishes or SKU..." 
+          [ngModel]="searchQuery()" 
+          (ngModelChange)="searchQuery.set($event)" />
+      </div>
+    </div>
+
+    <!-- Category Pills Filter -->
+    <div class="category-scroll-bar">
+      <button 
+        class="cat-chip" 
+        [class.active]="selectedCategory() === null" 
+        (click)="selectedCategory.set(null)">
+        <i class="fa-solid fa-border-all"></i> All Dishes
+      </button>
+      <button 
+        *ngFor="let cat of categories()"
+        class="cat-chip" 
+        [class.active]="selectedCategory() === cat.id" 
+        (click)="selectedCategory.set(cat.id)">
+        <i class="fa-solid" [ngClass]="cat.icon || 'fa-utensils'"></i>
+        {{ cat.name }}
+      </button>
+    </div>
+
+    <!-- Product Cards Grid -->
+    <div *ngIf="isLoading()" class="loading-state">
+      <i class="fa-solid fa-circle-notch fa-spin fa-2x text-amber"></i>
+      <p>Loading live menu from database...</p>
+    </div>
+
+    <div *ngIf="!isLoading() && filteredProducts().length === 0" class="empty-cart-state" style="margin: 3rem auto;">
+      <i class="fa-solid fa-utensils empty-icon"></i>
+      <p>No dishes found in database for this category.</p>
+    </div>
+
+    <div class="product-cards-grid" *ngIf="!isLoading() && filteredProducts().length > 0">
+      <div *ngFor="let prod of filteredProducts()" class="dish-card" (click)="onProductClick(prod)">
+        <div class="dish-emoji-banner">{{ prod.imageEmoji }}</div>
+        <div class="dish-info">
+          <div class="dish-name">{{ prod.name }}</div>
+          <div class="dish-sub">{{ prod.categoryName }}</div>
+          <div class="dish-price-row">
+            <span class="dish-price">৳{{ prod.basePrice | number }}</span>
+            <div class="dish-tags">
+              <span class="tag-variant" *ngIf="prod.variants.length > 0">{{ prod.variants.length }} Sizes</span>
+              <span class="tag-mod" *ngIf="prod.modifiers.length > 0">Customizable</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: POS Live Cart Panel -->
+  <aside class="pos-cart-panel">
+    <div class="cart-header">
+      <div>
+        <div class="cart-title">
+          <i class="fa-solid fa-receipt text-amber"></i>
+          <span>{{ selectedTable()?.tableNo || selectedOrderType() }}</span>
+          <span class="badge badge-emerald" *ngIf="activeOrderNo()"><i class="fa-solid fa-link"></i> {{ activeOrderNo() }}</span>
+          <span class="badge badge-amber">{{ cart().length }} Items</span>
+        </div>
+        <div class="covers-counter" *ngIf="selectedOrderType() === 'Dine-In'">
+          <span class="covers-lbl">Covers / Guests:</span>
+          <button class="covers-btn" (click)="guestCoverCount.set(guestCoverCount() > 1 ? guestCoverCount() - 1 : 1)">-</button>
+          <strong>{{ guestCoverCount() }}</strong>
+          <button class="covers-btn" (click)="guestCoverCount.set(guestCoverCount() + 1)">+</button>
+        </div>
+      </div>
+
+      <button class="btn-clear" (click)="clearCart()" *ngIf="cart().length > 0" title="Clear Order">
+        <i class="fa-solid fa-trash-can"></i>
+      </button>
+    </div>
+
+    <!-- Items Scroll -->
+    <div class="cart-items-scroll">
+      <div *ngIf="cart().length === 0" class="empty-cart-state">
+        <i class="fa-solid fa-basket-shopping empty-icon"></i>
+        <p>No items in current order.</p>
+        <span>Select dishes on the left to add</span>
+      </div>
+
+      <div *ngFor="let item of cart()" class="cart-item-card">
+        <div class="item-title-row">
+          <div class="item-name-group">
+            <span class="item-name">{{ item.name }}</span>
+            <!-- Kitchen sent status indicator -->
+            <span class="badge" [ngClass]="item.isSentToKitchen ? 'badge-emerald' : 'badge-amber'">
+              {{ item.isSentToKitchen ? 'KOT Sent' : 'New Item' }}
+            </span>
+          </div>
+          <span class="item-total">৳{{ item.lineTotal | number }}</span>
+        </div>
+
+        <div class="item-meta" *ngIf="item.variant">
+          <span class="item-variant-chip">{{ item.variant.name }}</span>
+        </div>
+
+        <div class="item-modifiers-list" *ngIf="item.modifiers.length > 0">
+          <span *ngFor="let m of item.modifiers" class="mod-pill">+ {{ m.name }} (৳{{ m.price }})</span>
+        </div>
+
+        <!-- Course Selector Row -->
+        <div class="course-selector-row">
+          <span class="course-lbl">Course:</span>
+          <div class="course-chips">
+            <button class="course-btn" [class.active]="item.courseType === 'Starter'" (click)="setCourseForItem(item, 'Starter')">Starter</button>
+            <button class="course-btn" [class.active]="item.courseType === 'Main'" (click)="setCourseForItem(item, 'Main')">Main</button>
+            <button class="course-btn" [class.active]="item.courseType === 'Dessert'" (click)="setCourseForItem(item, 'Dessert')">Dessert</button>
+            <button class="course-btn" [class.active]="item.courseType === 'Beverage'" (click)="setCourseForItem(item, 'Beverage')">Drink</button>
+          </div>
+        </div>
+
+        <div class="item-qty-row">
+          <div class="qty-control">
+            <button class="qty-btn" (click)="updateQuantity(item.id, -1)">-</button>
+            <span class="qty-val">{{ item.quantity }}</span>
+            <button class="qty-btn" (click)="updateQuantity(item.id, 1)">+</button>
+          </div>
+          <span class="unit-rate">@ ৳{{ item.unitPrice }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Totals & Actions -->
+    <div class="cart-bill-summary" *ngIf="cart().length > 0">
+      <div class="bill-row">
+        <span>Subtotal</span>
+        <span>৳{{ subtotal() | number }}</span>
+      </div>
+      <div class="bill-row discount-row" *ngIf="discountAmount() > 0">
+        <span>Discount ({{ discountPercent() }}%)</span>
+        <span>- ৳{{ discountAmount() | number }}</span>
+      </div>
+      <div class="bill-row" *ngIf="selectedOrderType() === 'Dine-In'">
+        <span>Service Charge ({{ serviceChargeRate() }}%)</span>
+        <span>+ ৳{{ serviceChargeAmount() | number }}</span>
+      </div>
+      <div class="bill-row">
+        <span>VAT ({{ vatRate() }}% Mushak 6.3)</span>
+        <span>৳{{ taxAmount() | number }}</span>
+      </div>
+      <div class="bill-divider"></div>
+      <div class="bill-row grand-total-row">
+        <span>Net Payable (BDT)</span>
+        <span class="total-amount">৳{{ grandTotal() | number }}</span>
+      </div>
+
+      <!-- Action Buttons Toolbar: Table-Wise vs Direct Pay -->
+      <div class="cart-actions-grid">
+        <button class="btn-kot" (click)="holdTableAndSendKOT()" title="Hold on table & fire kitchen ticket (Standard Table-Wise Order)">
+          <i class="fa-solid fa-fire text-amber"></i>
+          <span>Hold Table & KOT ({{ unsentKitchenCount() }})</span>
+        </button>
+        <button class="btn-pay" (click)="openPaymentModal()" title="Direct Pay / Instant Settlement">
+          <i class="fa-solid fa-bolt"></i>
+          <span>Direct Pay ৳{{ grandTotal() | number }}</span>
+        </button>
+        <button class="btn-prebill" (click)="printPreBill()" title="Print Guest Pro-forma Check">
+          <i class="fa-solid fa-receipt"></i>
+          <span>Pre-Bill</span>
+        </button>
+        <button class="btn-split" (click)="openSplitBillModal()" title="Odoo Bill Splitting">
+          <i class="fa-solid fa-scissors"></i>
+          <span>Split Bill</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- ======================================================= -->
+<!-- MODIFIER / ADDON CUSTOMIZATION MODAL                    -->
+<!-- ======================================================= -->
+<div class="modal-overlay" *ngIf="activeProductForModifier()">
+  <div class="modal-content animate-fade-in customize-modal">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <div class="modal-badge"><i class="fa-solid fa-sliders"></i> Item Customization</div>
+        <h3 class="modal-title">{{ activeProductForModifier()!.name }}</h3>
+        <span class="modal-subtitle">Base: ৳{{ activeProductForModifier()!.basePrice | number }}</span>
+      </div>
+      <button class="btn-close" (click)="activeProductForModifier.set(null)" aria-label="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="modal-body custom-scrollbar">
+      <!-- Course Selector -->
+      <div class="mod-group">
+        <div class="mod-group-header">
+          <span class="mod-group-title"><i class="fa-solid fa-utensils"></i> Dining Course</span>
+        </div>
+        <div class="variants-row">
+          <button class="variant-btn" [class.selected]="selectedCourseForNewItem() === 'Starter'" (click)="selectedCourseForNewItem.set('Starter')">Starter</button>
+          <button class="variant-btn" [class.selected]="selectedCourseForNewItem() === 'Main'" (click)="selectedCourseForNewItem.set('Main')">Main Course</button>
+          <button class="variant-btn" [class.selected]="selectedCourseForNewItem() === 'Dessert'" (click)="selectedCourseForNewItem.set('Dessert')">Dessert</button>
+          <button class="variant-btn" [class.selected]="selectedCourseForNewItem() === 'Beverage'" (click)="selectedCourseForNewItem.set('Beverage')">Beverage</button>
+        </div>
+      </div>
+
+      <!-- Portion / Size -->
+      <div *ngIf="activeProductForModifier()!.variants.length > 0" class="mod-group">
+        <div class="mod-group-header">
+          <span class="mod-group-title"><i class="fa-solid fa-layer-group"></i> Portion / Size</span>
+        </div>
+        <div class="variants-row">
+          <button 
+            *ngFor="let v of activeProductForModifier()!.variants" 
+            class="variant-btn" 
+            [class.selected]="selectedVariant()?.id === v.id"
+            (click)="selectedVariant.set(v)">
+            <span class="variant-name">{{ v.name }}</span>
+            <span class="variant-delta" *ngIf="v.priceDelta > 0">+ ৳{{ v.priceDelta }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <div class="footer-summary">
+        <span class="total-label">Item Total:</span>
+        <span class="total-amount-glow">৳{{ activeCustomizedItemPrice() | number }}</span>
+      </div>
+      <div class="footer-actions">
+        <button class="btn-cancel" (click)="activeProductForModifier.set(null)">Cancel</button>
+        <button class="btn-confirm-add" (click)="addConfiguredProductToCart()">
+          <i class="fa-solid fa-cart-plus"></i> Add to Order • ৳{{ activeCustomizedItemPrice() | number }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================= -->
+<!-- ODOO SPLIT BILL MODAL (2-COLUMN INTERACTIVE SPLITTER)   -->
+<!-- ======================================================= -->
+<div class="modal-overlay" *ngIf="isSplitModalOpen()">
+  <div class="modal-content animate-fade-in split-modal-card">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <div class="modal-badge"><i class="fa-solid fa-scissors"></i> Odoo Bill Splitting</div>
+        <h3 class="modal-title">Split Order #{{ selectedTable()?.tableNo || 'Counter' }}</h3>
+        <span class="modal-subtitle">Transfer items between Bill 1 and Bill 2 or split equally</span>
+      </div>
+      <button class="btn-close" (click)="isSplitModalOpen.set(false)"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div class="modal-body custom-scrollbar">
+      <div class="split-columns-grid">
+        <!-- Column 1: Bill 1 (Original) -->
+        <div class="split-col">
+          <div class="split-col-header">
+            <h4><i class="fa-solid fa-file-invoice text-blue"></i> Bill 1 (Table Tab)</h4>
+            <span class="col-total">৳{{ subtotal() | number }}</span>
+          </div>
+
+          <div class="split-items-list">
+            <div *ngFor="let item of cart()" class="split-item-row">
+              <div class="split-item-name">
+                <strong>{{ item.quantity }}x</strong> {{ item.name }}
+                <div class="sub-cost">৳{{ item.lineTotal | number }}</div>
+              </div>
+              <button class="btn-move-arrow" (click)="moveItemToBill2(item)" title="Move to Bill 2">
+                Move <i class="fa-solid fa-arrow-right"></i>
+              </button>
+            </div>
+            <div *ngIf="cart().length === 0" class="empty-col">All items moved to Bill 2.</div>
+          </div>
+        </div>
+
+        <!-- Column 2: Bill 2 (Split Off) -->
+        <div class="split-col">
+          <div class="split-col-header">
+            <h4><i class="fa-solid fa-file-invoice text-emerald"></i> Bill 2 (Split Out)</h4>
+            <span class="col-total text-emerald">৳{{ splitBill2Total() | number }}</span>
+          </div>
+
+          <div class="split-items-list">
+            <div *ngFor="let item of splitCartBill2()" class="split-item-row">
+              <button class="btn-move-arrow back" (click)="moveItemBackToBill1(item)" title="Return to Bill 1">
+                <i class="fa-solid fa-arrow-left"></i> Return
+              </button>
+              <div class="split-item-name text-right">
+                <strong>{{ item.quantity }}x</strong> {{ item.name }}
+                <div class="sub-cost">৳{{ item.lineTotal | number }}</div>
+              </div>
+            </div>
+            <div *ngIf="splitCartBill2().length === 0" class="empty-col">
+              Click "Move ➔" on any item in Bill 1 to split it into Bill 2.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="isSplitModalOpen.set(false)">Cancel</button>
+      <button class="btn-confirm-add" (click)="settleSplitBill2()" [disabled]="splitCartBill2().length === 0">
+        <i class="fa-solid fa-check"></i> Settle Bill 2 (৳{{ splitBill2Total() | number }})
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================= -->
+<!-- BANGLADESH MULTI-TENDER PAYMENT MODAL                   -->
+<!-- ======================================================= -->
+<div class="modal-overlay" *ngIf="isPaymentModalOpen()">
+  <div class="modal-content animate-fade-in settlement-modal">
+    <div class="modal-header settlement-header">
+      <div class="modal-title-group">
+        <div class="modal-badge settlement-badge"><i class="fa-solid fa-cash-register"></i> Bangladesh Market Settle</div>
+        <h3 class="modal-title">Bill Settlement & Mushak 6.3</h3>
+        <span class="modal-subtitle">Table: {{ selectedTable()?.tableNo || 'Counter' }} • {{ selectedOrderType() }}</span>
+      </div>
+      <div class="header-total-display">
+        <span class="header-total-label">Payable (BDT)</span>
+        <span class="header-total-val text-amber">৳{{ grandTotal() | number }}</span>
+      </div>
+      <button class="btn-close" (click)="isPaymentModalOpen.set(false)" aria-label="Close">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="modal-body custom-scrollbar">
+      <!-- Payment Tender Tabs -->
+      <div class="tender-section-label"><i class="fa-solid fa-wallet"></i> Choose Payment Method</div>
+      <div class="tender-tabs-grid">
+        <button 
+          class="tender-card cash-card" 
+          [class.active]="paymentMethod() === 'Cash'" 
+          (click)="paymentMethod.set('Cash')">
+          <div class="tender-icon-box"><i class="fa-solid fa-money-bill-wave"></i></div>
+          <div class="tender-text">
+            <span class="tender-name">Cash</span>
+            <span class="tender-hint">Drawer Cash</span>
+          </div>
+        </button>
+
+        <button 
+          class="tender-card bkash-card" 
+          [class.active]="paymentMethod() === 'bKash'" 
+          (click)="paymentMethod.set('bKash')">
+          <div class="tender-icon-box"><i class="fa-solid fa-mobile-screen-button"></i></div>
+          <div class="tender-text">
+            <span class="tender-name">bKash</span>
+            <span class="tender-hint">Merchant QR</span>
+          </div>
+        </button>
+
+        <button 
+          class="tender-card nagad-card" 
+          [class.active]="paymentMethod() === 'Nagad'" 
+          (click)="paymentMethod.set('Nagad')">
+          <div class="tender-icon-box"><i class="fa-solid fa-mobile-retro"></i></div>
+          <div class="tender-text">
+            <span class="tender-name">Nagad</span>
+            <span class="tender-hint">Postal MFS</span>
+          </div>
+        </button>
+
+        <button 
+          class="tender-card card-card" 
+          [class.active]="paymentMethod() === 'Card'" 
+          (click)="paymentMethod.set('Card')">
+          <div class="tender-icon-box"><i class="fa-solid fa-credit-card"></i></div>
+          <div class="tender-text">
+            <span class="tender-name">Card / POS</span>
+            <span class="tender-hint">Visa / Master</span>
+          </div>
+        </button>
+
+        <button 
+          class="tender-card due-card" 
+          [class.active]="paymentMethod() === 'Due'" 
+          (click)="paymentMethod.set('Due')">
+          <div class="tender-icon-box"><i class="fa-solid fa-book-bookmark"></i></div>
+          <div class="tender-text">
+            <span class="tender-name">Due (বাকির খাতা)</span>
+            <span class="tender-hint">House Account</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- Cash Tendered Details -->
+      <div *ngIf="paymentMethod() === 'Cash'" class="tender-detail-card animate-fade-in">
+        <div class="fast-cash-header">
+          <span><i class="fa-solid fa-bolt text-amber"></i> Bangladesh Note Tender Buttons</span>
+        </div>
+        <div class="fast-cash-row">
+          <button class="note-chip exact" (click)="setTenderAmount(grandTotal())">
+            <i class="fa-solid fa-check-double"></i> Exact (৳{{ grandTotal() | number }})
+          </button>
+          <button class="note-chip" (click)="setTenderAmount(500)">৳500</button>
+          <button class="note-chip" (click)="setTenderAmount(1000)">৳1,000</button>
+          <button class="note-chip" (click)="setTenderAmount(2000)">৳2,000</button>
+          <button class="note-chip" (click)="setTenderAmount(5000)">৳5,000</button>
+        </div>
+
+        <div class="cash-calc-grid mt-4">
+          <div class="calc-field">
+            <label class="calc-label"><i class="fa-solid fa-hand-holding-dollar"></i> Cash Tendered (BDT)</label>
+            <div class="tender-input-wrap">
+              <span class="curr-sign">৳</span>
+              <input 
+                type="number" 
+                class="tender-input" 
+                [(ngModel)]="cashTendered" />
+            </div>
+          </div>
+
+          <div class="calc-field">
+            <label class="calc-label"><i class="fa-solid fa-coins"></i> Change Return (ফেরত)</label>
+            <div class="change-display-box" [class.has-change]="changeAmount() > 0">
+              ৳{{ changeAmount() | number }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- bKash / Nagad Details -->
+      <div *ngIf="paymentMethod() === 'bKash' || paymentMethod() === 'Nagad'" class="tender-detail-card animate-fade-in">
+        <div class="mfs-verification-box">
+          <div class="mfs-qr-preview">
+            <i class="fa-solid fa-qrcode fa-3x" [style.color]="paymentMethod() === 'bKash' ? '#e2136e' : '#f97316'"></i>
+            <span class="qr-lbl">Merchant QR Code</span>
+          </div>
+          <div class="mfs-fields-wrap">
+            <label>Mandatory 10-Character TrxID (লেনদেন আইডি) *</label>
+            <input 
+              type="text" 
+              [(ngModel)]="mfsTrxId" 
+              placeholder="e.g. BK9X872L11" 
+              class="form-control text-uppercase" 
+              maxlength="15" />
+            <span class="helper-text">Verify TrxID from customer's {{ paymentMethod() }} SMS confirmation.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card POS Details -->
+      <div *ngIf="paymentMethod() === 'Card'" class="tender-detail-card animate-fade-in">
+        <div class="form-group">
+          <label>Bank POS Terminal Slip / Approval Code</label>
+          <input 
+            type="text" 
+            [(ngModel)]="cardSlipNo" 
+            placeholder="e.g. APPR-893021" 
+            class="form-control" />
+        </div>
+      </div>
+
+      <!-- Due / Credit Details -->
+      <div *ngIf="paymentMethod() === 'Due'" class="tender-detail-card animate-fade-in">
+        <div class="form-group">
+          <label>VIP / Corporate Account Name</label>
+          <input 
+            type="text" 
+            [(ngModel)]="dueCustomerName" 
+            class="form-control" />
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer settlement-footer">
+      <button class="btn-cancel" (click)="isPaymentModalOpen.set(false)">Cancel</button>
+      <button class="btn-confirm-settle" (click)="confirmSettlement()">
+        <i class="fa-solid fa-circle-check"></i> Settle & Print Mushak 6.3 Receipt
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Receipt Modal -->
+<app-receipt-preview 
+  *ngIf="isReceiptModalOpen()" 
+  [order]="lastSettledOrder()" 
+  (close)="isReceiptModalOpen.set(false)">
+</app-receipt-preview>
