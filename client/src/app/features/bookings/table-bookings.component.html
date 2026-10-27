@@ -6,30 +6,58 @@
     <span>{{ toastMessage() }}</span>
   </div>
 
-  <!-- HOSTESS RESERVATION DESK BANNER -->
-  <header class="hostess-banner">
-    <div class="hostess-profile">
-      <div class="hostess-avatar">
-        <i class="fa-solid fa-headset"></i>
+  <!-- TOP ROLE BAR & LOGIN STATUS -->
+  <header class="role-auth-bar" [class.admin-bar]="userRole() === 'Admin'" [class.customer-bar]="userRole() === 'Customer'">
+    <div class="role-identity">
+      <!-- Icon avatar -->
+      <div class="role-avatar" [class.avatar-admin]="userRole() === 'Admin'" [class.avatar-cust]="userRole() === 'Customer'">
+        <i *ngIf="userRole() === 'Admin'" class="fa-solid fa-user-shield"></i>
+        <i *ngIf="userRole() === 'Customer'" class="fa-solid fa-user"></i>
       </div>
-      <div>
-        <div class="hostess-badge-row">
-          <span class="hostess-portal-badge"><i class="fa-solid fa-shield-halved"></i> Hostess Dedicated Session</span>
-          <span class="desk-indicator"><i class="fa-solid fa-circle text-emerald"></i> Online</span>
+
+      <!-- User Info -->
+      <div class="role-details">
+        <div class="role-badge-line">
+          <span class="role-tag" [class.tag-admin]="userRole() === 'Admin'" [class.tag-cust]="userRole() === 'Customer'">
+            {{ userRole() === 'Admin' ? '🛡️ Admin / Hostess Control' : '👤 Customer / Guest Online Portal' }}
+          </span>
+          <span class="online-indicator"><i class="fa-solid fa-circle text-emerald"></i> Active Session</span>
         </div>
-        <h1 class="hostess-title">{{ hostessName() }} <span class="hostess-role">({{ hostessRole() }})</span></h1>
-        <div class="hostess-subtitle">
-          <span><i class="fa-solid fa-location-dot text-amber"></i> {{ hostessDesk() }}</span>
-          <span class="sep">•</span>
-          <span><i class="fa-solid fa-filter text-cyan"></i> Filtered by Date & Time Slot</span>
-          <span class="sep">•</span>
-          <span class="text-amber">Table & Individual Chair Bookings Engine</span>
-        </div>
+
+        <h1 class="role-name">
+          {{ userRole() === 'Admin' ? adminName() : customerName() }}
+          <span class="role-subtext">
+            {{ userRole() === 'Admin' ? '(' + adminRole() + ' • ' + adminDesk() + ')' : '(Phone: ' + customerPhone() + ')' }}
+          </span>
+        </h1>
       </div>
     </div>
 
-    <!-- Quick Action Buttons -->
-    <div class="hostess-banner-actions">
+    <!-- Login / Switch User Controls -->
+    <div class="auth-controls">
+      <!-- Switch Role Toggle -->
+      <button 
+        *ngIf="userRole() === 'Customer'" 
+        class="btn btn-switch-admin" 
+        (click)="switchRoleDirectly('Admin')" 
+        title="Switch to Admin / Hostess view">
+        <i class="fa-solid fa-user-shield"></i> Switch to Hostess / Admin
+      </button>
+
+      <button 
+        *ngIf="userRole() === 'Admin'" 
+        class="btn btn-switch-cust" 
+        (click)="switchRoleDirectly('Customer')" 
+        title="Switch to Customer online booking view">
+        <i class="fa-solid fa-user"></i> Switch to Customer View
+      </button>
+
+      <!-- Custom Login Modal Trigger -->
+      <button class="btn btn-outline" (click)="openLoginModal()">
+        <i class="fa-solid fa-arrow-right-to-bracket"></i> Login / Switch User
+      </button>
+
+      <!-- Action buttons -->
       <button class="btn btn-emerald" (click)="openNewBookingModal('Chair')">
         <i class="fa-solid fa-chair"></i> + Book Single Chair
       </button>
@@ -39,46 +67,33 @@
     </div>
   </header>
 
-  <!-- KPI SUMMARY METRICS -->
-  <section class="metrics-grid">
-    <div class="metric-card" [class.active-metric]="selectedTypeFilter() === 'All'" (click)="selectedTypeFilter.set('All')">
-      <div class="metric-icon total-icon"><i class="fa-solid fa-calendar-check"></i></div>
-      <div class="metric-data">
-        <span class="metric-label">Total Reservations</span>
-        <span class="metric-val">{{ totalCount() }}</span>
+  <!-- PENDING BOOKINGS ALERT BANNER (Visible in Admin Mode when there are pending requests) -->
+  <section *ngIf="userRole() === 'Admin' && pendingCount() > 0" class="pending-alert-banner">
+    <div class="alert-content">
+      <i class="fa-solid fa-triangle-exclamation alert-icon text-amber"></i>
+      <div>
+        <h4 class="alert-title">Pending Booking Requests ({{ pendingCount() }})</h4>
+        <p class="alert-desc">Guests have submitted reservation requests for tables/chairs that need your confirmation before locking.</p>
       </div>
     </div>
+    <button class="btn btn-amber" (click)="selectedStatusFilter.set('Pending'); activeTab.set('list')">
+      <i class="fa-solid fa-check-double"></i> Review & Confirm Requests
+    </button>
+  </section>
 
-    <div class="metric-card" [class.active-metric]="selectedTypeFilter() === 'Table'" (click)="selectedTypeFilter.set('Table')">
-      <div class="metric-icon table-icon"><i class="fa-solid fa-table-cells"></i></div>
-      <div class="metric-data">
-        <span class="metric-label">Full Table Bookings</span>
-        <span class="metric-val text-amber">{{ tableCount() }}</span>
-      </div>
+  <!-- CUSTOMER WELCOME BANNER (Visible in Customer Mode) -->
+  <section *ngIf="userRole() === 'Customer'" class="customer-welcome-banner">
+    <div class="welcome-text">
+      <h2><i class="fa-solid fa-utensils text-amber"></i> Reserve Your Table or Chair Online</h2>
+      <p>Select your preferred Date and Time slot below. View the full floor map, click any available table or individual chair to book, and submit your reservation. Our reception desk will review and confirm your booking!</p>
     </div>
-
-    <div class="metric-card" [class.active-metric]="selectedTypeFilter() === 'Chair'" (click)="selectedTypeFilter.set('Chair')">
-      <div class="metric-icon chair-icon"><i class="fa-solid fa-chair"></i></div>
-      <div class="metric-data">
-        <span class="metric-label">Chair / Seat Bookings</span>
-        <span class="metric-val text-cyan">{{ chairCount() }}</span>
-      </div>
-    </div>
-
-    <div class="metric-card">
-      <div class="metric-icon seated-icon"><i class="fa-solid fa-user-check"></i></div>
-      <div class="metric-data">
-        <span class="metric-label">Guests Seated</span>
-        <span class="metric-val text-emerald">{{ seatedCount() }}</span>
-      </div>
-    </div>
-
-    <div class="metric-card">
-      <div class="metric-icon confirmed-icon"><i class="fa-solid fa-circle-check"></i></div>
-      <div class="metric-data">
-        <span class="metric-label">Upcoming Confirmed</span>
-        <span class="metric-val text-purple">{{ confirmedCount() }}</span>
-      </div>
+    <div class="customer-stats">
+      <span class="cust-stat-pill">
+        <i class="fa-solid fa-clock-rotate-left text-amber"></i> My Bookings: <strong>{{ myBookings().length }}</strong>
+      </span>
+      <span *ngIf="selectedTimeSlot() !== 'All'" class="cust-stat-pill active-slot-pill">
+        <i class="fa-solid fa-calendar-day text-cyan"></i> {{ selectedDate() }} • {{ selectedTimeSlot() }}
+      </span>
     </div>
   </section>
 
@@ -86,7 +101,7 @@
   <section class="filter-control-panel">
     <!-- Date Navigation -->
     <div class="filter-group">
-      <label class="filter-label"><i class="fa-regular fa-calendar text-amber"></i> Select Booking Date:</label>
+      <label class="filter-label"><i class="fa-regular fa-calendar text-amber"></i> 1. Select Date:</label>
       <div class="quick-date-buttons">
         <button 
           *ngFor="let qd of quickDates()"
@@ -105,7 +120,7 @@
 
     <!-- Time Slot Navigation -->
     <div class="filter-group">
-      <label class="filter-label"><i class="fa-regular fa-clock text-cyan"></i> Select Time Slot:</label>
+      <label class="filter-label"><i class="fa-regular fa-clock text-cyan"></i> 2. Select Time Slot:</label>
       <div class="time-slot-select-wrapper">
         <select 
           class="time-slot-select"
@@ -118,54 +133,156 @@
 
     <!-- Booking Type Filter Buttons -->
     <div class="filter-group">
-      <label class="filter-label"><i class="fa-solid fa-layer-group text-purple"></i> Type:</label>
+      <label class="filter-label"><i class="fa-solid fa-layer-group text-purple"></i> Filter Type:</label>
       <div class="type-pill-group">
         <button class="pill-btn" [class.active]="selectedTypeFilter() === 'All'" (click)="selectedTypeFilter.set('All')">All</button>
-        <button class="pill-btn" [class.active]="selectedTypeFilter() === 'Table'" (click)="selectedTypeFilter.set('Table')">🍽️ Table</button>
-        <button class="pill-btn" [class.active]="selectedTypeFilter() === 'Chair'" (click)="selectedTypeFilter.set('Chair')">🪑 Chair</button>
+        <button class="pill-btn" [class.active]="selectedTypeFilter() === 'Table'" (click)="selectedTypeFilter.set('Table')">🍽️ Tables</button>
+        <button class="pill-btn" [class.active]="selectedTypeFilter() === 'Chair'" (click)="selectedTypeFilter.set('Chair')">🪑 Chairs</button>
       </div>
     </div>
 
-    <!-- Search Input -->
-    <div class="filter-group search-group">
-      <label class="filter-label"><i class="fa-solid fa-magnifying-glass"></i> Search Guest / Table:</label>
-      <div class="search-input-box">
-        <i class="fa-solid fa-magnifying-glass search-icon"></i>
-        <input 
-          type="text" 
-          placeholder="Name, Phone, Table (e.g. G-01)..." 
-          [ngModel]="searchQuery()" 
-          (ngModelChange)="searchQuery.set($event)" />
-        <button *ngIf="searchQuery()" class="clear-btn" (click)="searchQuery.set('')">×</button>
+    <!-- Status Filter (Especially for Admin) -->
+    <div class="filter-group">
+      <label class="filter-label"><i class="fa-solid fa-filter text-emerald"></i> Status:</label>
+      <div class="type-pill-group">
+        <button class="pill-btn" [class.active]="selectedStatusFilter() === 'All'" (click)="selectedStatusFilter.set('All')">All</button>
+        <button class="pill-btn pending-pill" [class.active]="selectedStatusFilter() === 'Pending'" (click)="selectedStatusFilter.set('Pending')">
+          ⏳ Pending ({{ pendingCount() }})
+        </button>
+        <button class="pill-btn confirmed-pill" [class.active]="selectedStatusFilter() === 'Confirmed'" (click)="selectedStatusFilter.set('Confirmed')">
+          ✅ Confirmed ({{ confirmedCount() }})
+        </button>
       </div>
     </div>
 
-    <!-- View Mode Switch: List vs Floor Grid -->
+    <!-- View Mode Switch: Floor Map vs List -->
     <div class="filter-group view-toggle-group">
       <label class="filter-label"><i class="fa-solid fa-eye"></i> View Mode:</label>
       <div class="view-toggle-buttons">
         <button 
           class="toggle-btn" 
-          [class.active]="activeTab() === 'list'" 
-          (click)="activeTab.set('list')">
-          <i class="fa-solid fa-list-ul"></i> Registry List
+          [class.active]="activeTab() === 'grid'" 
+          (click)="activeTab.set('grid')">
+          <i class="fa-solid fa-map"></i> Whole Table Area
         </button>
         <button 
           class="toggle-btn" 
-          [class.active]="activeTab() === 'grid'" 
-          (click)="activeTab.set('grid')">
-          <i class="fa-solid fa-map"></i> Floor & Chair Map
+          [class.active]="activeTab() === 'list'" 
+          (click)="activeTab.set('list')">
+          <i class="fa-solid fa-list-ul"></i> Registry & Approvals
         </button>
       </div>
     </div>
   </section>
 
-  <!-- VIEW 1: REGISTRY LIST VIEW -->
+  <!-- VIEW 1: WHOLE TABLE AREA (INTERACTIVE FLOOR & CHAIR MAP) -->
+  <section *ngIf="activeTab() === 'grid'" class="visual-floor-container">
+    <!-- Area Bar & Legend -->
+    <div class="floor-area-bar">
+      <div class="area-pills">
+        <button 
+          *ngFor="let area of diningAreas()" 
+          class="area-pill"
+          [class.active]="selectedAreaId() === area.id"
+          (click)="selectedAreaId.set(area.id)">
+          <i class="fa-solid fa-map-pin"></i> {{ area.name }} (Floor {{ area.floorNumber }})
+        </button>
+      </div>
+
+      <!-- Color Legend -->
+      <div class="floor-legend">
+        <span class="legend-item"><span class="legend-color color-free-table"></span> Free Table (Click to Book)</span>
+        <span class="legend-item"><span class="legend-color color-free-chair"></span> Free Chair (Click to Book)</span>
+        <span class="legend-item"><span class="legend-color color-pending"></span> ⏳ Pending Approval</span>
+        <span class="legend-item"><span class="legend-color color-booked"></span> 🔒 Confirmed / Locked</span>
+      </div>
+    </div>
+
+    <!-- Instructions Banner for Customer -->
+    <div class="floor-instruction-banner" *ngIf="userRole() === 'Customer'">
+      <i class="fa-solid fa-circle-info text-cyan"></i>
+      <span><strong>How to book:</strong> Click directly on any free table to book the whole table, or click on any individual free chair around a table to book that specific chair!</span>
+    </div>
+
+    <!-- Interactive Canvas showing Whole Table Area -->
+    <div class="floor-canvas">
+      <div 
+        *ngFor="let table of currentTables()"
+        class="floor-table-node"
+        [class.table-confirmed]="isTableConfirmed(table)"
+        [class.table-pending]="isTablePending(table)"
+        [class.table-available]="!isTableConfirmed(table) && !isTablePending(table)"
+        [class.table-round]="table.shape === 'round'"
+        [style.left.px]="table.positionX || 50"
+        [style.top.px]="table.positionY || 50"
+        [style.width.px]="table.width || 120"
+        [style.height.px]="table.height || 100">
+
+        <!-- Table Interior Body -->
+        <div 
+          class="table-body" 
+          [title]="isTableConfirmed(table) ? ('Table ' + table.tableNo + ' is Confirmed & Locked for ' + getTableBooking(table)?.customerName) : (isTablePending(table) ? 'Table ' + table.tableNo + ' is Pending Confirmation' : 'Click to book Table ' + table.tableNo)"
+          (click)="!isTableConfirmed(table) && openNewBookingModal('Table', table)">
+
+          <div class="table-no-tag">{{ table.tableNo }}</div>
+          <div class="table-cap-tag">{{ table.capacity }} Seats</div>
+
+          <!-- Table Booking Status Tag -->
+          <div *ngIf="isTableConfirmed(table)" class="table-status-confirmed">
+            <i class="fa-solid fa-lock"></i> Confirmed
+            <div class="reserved-guest-name">{{ getTableBooking(table)?.customerName }}</div>
+          </div>
+
+          <div *ngIf="isTablePending(table)" class="table-status-pending">
+            <i class="fa-solid fa-hourglass-half"></i> Pending
+            <div class="reserved-guest-name">{{ getTableBooking(table)?.customerName }}</div>
+          </div>
+
+          <div *ngIf="!isTableConfirmed(table) && !isTablePending(table)" class="table-status-available">
+            <i class="fa-solid fa-plus-circle"></i> Reserve Table
+          </div>
+        </div>
+
+        <!-- Dynamic Realistic Chairs around the Table -->
+        <div 
+          *ngFor="let chair of getTableChairs(table)"
+          class="visual-chair-item"
+          [class.chair-confirmed]="chair.isBooked"
+          [class.chair-pending]="chair.isPending"
+          [class.chair-available]="!chair.isBooked && !chair.isPending"
+          [ngStyle]="chair.style"
+          [title]="chair.isBooked ? ('Chair #' + chair.seatNumber + ' is Confirmed & Locked: ' + (chair.bookedGuest || 'Booked')) : (chair.isPending ? ('Chair #' + chair.seatNumber + ' is Pending Approval: ' + (chair.bookedGuest || 'Pending')) : ('Chair #' + chair.seatNumber + ' is Free! Click to Reserve'))"
+          (click)="$event.stopPropagation(); (!chair.isBooked) && openNewBookingModal('Chair', table, chair.seatNumber)">
+          
+          <div class="chair-backrest"></div>
+          <div class="chair-cushion">
+            <span class="chair-num">{{ chair.seatNumber }}</span>
+          </div>
+
+          <!-- Status badge indicator -->
+          <div *ngIf="chair.isBooked" class="chair-indicator-dot chair-dot-confirmed" title="Confirmed">
+            <i class="fa-solid fa-lock"></i>
+          </div>
+          <div *ngIf="chair.isPending" class="chair-indicator-dot chair-dot-pending" title="Pending Approval">
+            <i class="fa-solid fa-hourglass-half"></i>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW 2: REGISTRY LIST & APPROVALS VIEW -->
   <section *ngIf="activeTab() === 'list'" class="registry-container">
     <div class="registry-header-row">
       <div class="registry-title-info">
-        <h3><i class="fa-solid fa-list-check text-amber"></i> Reservations for {{ selectedDate() }} • {{ selectedTimeSlot() }}</h3>
-        <span class="registry-count-badge">{{ filteredBookings().length }} bookings found</span>
+        <h3>
+          <i class="fa-solid fa-list-check text-amber"></i> 
+          Reservations for {{ selectedDate() }} • {{ selectedTimeSlot() }}
+        </h3>
+        <span class="registry-count-badge">
+          {{ filteredBookings().length }} reservations • {{ pendingCount() }} pending confirmation
+        </span>
       </div>
 
       <div class="refresh-box">
@@ -178,7 +295,7 @@
     <!-- Empty State -->
     <div *ngIf="filteredBookings().length === 0 && !isLoading()" class="empty-bookings-box">
       <div class="empty-icon"><i class="fa-solid fa-calendar-xmark"></i></div>
-      <h4>No Bookings Found for Selected Date & Time Slot</h4>
+      <h4>No Reservations Found for Selected Date & Time Slot</h4>
       <p>There are no table or chair reservations matching the current filters.</p>
       <div class="empty-actions">
         <button class="btn btn-emerald" (click)="openNewBookingModal('Chair')">
@@ -204,11 +321,11 @@
             <th>Deposit</th>
             <th>Status</th>
             <th>Special Requests</th>
-            <th class="text-right">Actions</th>
+            <th class="text-right">Admin Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let b of filteredBookings()" [class.row-seated]="b.status === 'Seated'">
+          <tr *ngFor="let b of filteredBookings()" [class.row-pending]="b.status === 'Pending'" [class.row-seated]="b.status === 'Seated'">
             <!-- Booking No -->
             <td>
               <span class="booking-code">{{ b.bookingNo }}</span>
@@ -221,7 +338,7 @@
                 <i class="fa-solid fa-table"></i> Entire Table
               </span>
               <span *ngIf="b.bookingType === 'Chair'" class="type-badge chair-type">
-                <i class="fa-solid fa-chair"></i> Chair / Seat
+                <i class="fa-solid fa-chair"></i> Chair #{{ b.seatNumber }}
               </span>
             </td>
 
@@ -230,7 +347,7 @@
               <div class="table-seat-cell">
                 <span class="table-pill">{{ b.tableNo }}</span>
                 <span *ngIf="b.bookingType === 'Chair' && b.seatNumber" class="seat-pill">
-                  Chair #{{ b.seatNumber }}
+                  Seat #{{ b.seatNumber }}
                 </span>
                 <span *ngIf="b.bookingType === 'Table'" class="all-seats-pill">
                   All Seats
@@ -268,10 +385,14 @@
               </div>
             </td>
 
-            <!-- Status -->
+            <!-- Status Badge -->
             <td>
               <span class="status-badge" [ngClass]="b.status.toLowerCase()">
-                <i class="fa-solid fa-circle status-dot"></i> {{ b.status }}
+                <i *ngIf="b.status === 'Pending'" class="fa-solid fa-hourglass-half"></i>
+                <i *ngIf="b.status === 'Confirmed'" class="fa-solid fa-circle-check"></i>
+                <i *ngIf="b.status === 'Seated'" class="fa-solid fa-chair"></i>
+                <i *ngIf="b.status === 'Cancelled'" class="fa-solid fa-xmark"></i>
+                {{ b.status }}
               </span>
             </td>
 
@@ -282,10 +403,29 @@
               </span>
             </td>
 
-            <!-- Action Buttons -->
+            <!-- Action Buttons for Admin & Customer -->
             <td class="text-right">
               <div class="action-buttons-group">
-                <!-- Seat Guest -->
+                
+                <!-- ADMIN ACTION 1: CONFIRM BOOKING (Locks the table/chair!) -->
+                <button 
+                  *ngIf="b.status === 'Pending'" 
+                  class="btn-action confirm-action" 
+                  title="Admin: Confirm this reservation and lock table/chair"
+                  (click)="confirmBooking(b)">
+                  <i class="fa-solid fa-check"></i> Confirm
+                </button>
+
+                <!-- ADMIN ACTION 2: REJECT / DECLINE -->
+                <button 
+                  *ngIf="b.status === 'Pending'" 
+                  class="btn-action reject-action" 
+                  title="Admin: Reject booking request"
+                  (click)="rejectBooking(b)">
+                  <i class="fa-solid fa-xmark"></i> Reject
+                </button>
+
+                <!-- ADMIN ACTION 3: SEAT GUEST -->
                 <button 
                   *ngIf="b.status === 'Confirmed'" 
                   class="btn-action seat-action" 
@@ -296,6 +436,7 @@
 
                 <!-- Open in POS -->
                 <button 
+                  *ngIf="userRole() === 'Admin'"
                   class="btn-action pos-action" 
                   title="Open table in POS terminal"
                   (click)="openPosForBooking(b)">
@@ -304,11 +445,11 @@
 
                 <!-- Cancel Booking -->
                 <button 
-                  *ngIf="b.status !== 'Cancelled' && b.status !== 'Completed'" 
+                  *ngIf="b.status !== 'Cancelled' && b.status !== 'Completed' && b.status !== 'Pending'" 
                   class="btn-action cancel-action" 
                   title="Cancel this reservation"
                   (click)="cancelBooking(b)">
-                  <i class="fa-solid fa-xmark text-danger"></i>
+                  <i class="fa-solid fa-trash text-danger"></i>
                 </button>
               </div>
             </td>
@@ -318,76 +459,92 @@
     </div>
   </section>
 
-  <!-- VIEW 2: INTERACTIVE FLOOR & CHAIR MAP -->
-  <section *ngIf="activeTab() === 'grid'" class="visual-floor-container">
-    <!-- Area Tabs -->
-    <div class="floor-area-bar">
-      <div class="area-pills">
-        <button 
-          *ngFor="let area of diningAreas()" 
-          class="area-pill"
-          [class.active]="selectedAreaId() === area.id"
-          (click)="selectedAreaId.set(area.id)">
-          <i class="fa-solid fa-map-pin"></i> {{ area.name }} (Floor {{ area.floorNumber }})
+  <!-- MODAL: LOGIN / SWITCH USER ROLE -->
+  <div *ngIf="showLoginModal()" class="modal-backdrop" (click)="closeLoginModal()">
+    <div class="modal-card modal-auth-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge">
+            <i class="fa-solid fa-id-card"></i>
+          </div>
+          <div>
+            <h3>Login & Role Selection</h3>
+            <p class="modal-sub">Choose whether to book as a Customer or manage as Admin</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" (click)="closeLoginModal()">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Select Your Role:</label>
+          <div class="role-selector-cards">
+            <!-- Customer Option -->
+            <div 
+              class="role-select-box" 
+              [class.active-role-box]="tempLoginRole() === 'Customer'"
+              (click)="tempLoginRole.set('Customer')">
+              <div class="role-box-icon cust-box-icon"><i class="fa-solid fa-user"></i></div>
+              <div class="role-box-info">
+                <h4>Customer / Guest Diner</h4>
+                <p>View whole floor map, select table or chair, and submit booking request.</p>
+              </div>
+            </div>
+
+            <!-- Admin Option -->
+            <div 
+              class="role-select-box" 
+              [class.active-role-box]="tempLoginRole() === 'Admin'"
+              (click)="tempLoginRole.set('Admin')">
+              <div class="role-box-icon admin-box-icon"><i class="fa-solid fa-user-shield"></i></div>
+              <div class="role-box-info">
+                <h4>Admin / Reservation Hostess</h4>
+                <p>Review customer requests, confirm & lock tables, seat guests, and manage floor.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- If Customer: Name and Phone Input -->
+        <div *ngIf="tempLoginRole() === 'Customer'" class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Your Name:</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              placeholder="e.g. Sadia Rahman" 
+              [ngModel]="tempLoginName()" 
+              (ngModelChange)="tempLoginName.set($event)" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mobile Phone:</label>
+            <input 
+              type="tel" 
+              class="form-control" 
+              placeholder="e.g. 01711223344" 
+              [ngModel]="tempLoginPhone()" 
+              (ngModelChange)="tempLoginPhone.set($event)" />
+          </div>
+        </div>
+
+        <!-- If Admin: Pre-configured Hostess details -->
+        <div *ngIf="tempLoginRole() === 'Admin'" class="admin-login-notice">
+          <i class="fa-solid fa-shield-check text-amber"></i>
+          <div>
+            <strong>Logging in as Reception Hostess:</strong> {{ adminName() }} ({{ adminRole() }})
+            <p class="admin-notice-sub">You will have authority to approve or decline pending bookings and officially lock tables.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeLoginModal()">Cancel</button>
+        <button type="button" class="btn btn-amber" (click)="confirmLogin()">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i> Login & Continue
         </button>
       </div>
-
-      <!-- Color Legend -->
-      <div class="floor-legend">
-        <span class="legend-item"><span class="legend-color color-free-table"></span> Free Table</span>
-        <span class="legend-item"><span class="legend-color color-booked-table"></span> Fully Booked Table</span>
-        <span class="legend-item"><span class="legend-color color-free-chair"></span> Free Chair (Click to book)</span>
-        <span class="legend-item"><span class="legend-color color-booked-chair"></span> Booked Chair</span>
-      </div>
     </div>
-
-    <!-- Interactive Canvas -->
-    <div class="floor-canvas">
-      <div 
-        *ngFor="let table of currentTables()"
-        class="floor-table-node"
-        [class.table-fully-booked]="isTableFullyBooked(table)"
-        [class.table-round]="table.shape === 'round'"
-        [style.left.px]="table.positionX || 50"
-        [style.top.px]="table.positionY || 50"
-        [style.width.px]="table.width || 120"
-        [style.height.px]="table.height || 100">
-
-        <!-- Table Interior Body -->
-        <div class="table-body" (click)="openNewBookingModal('Table', table)">
-          <div class="table-no-tag">{{ table.tableNo }}</div>
-          <div class="table-cap-tag">{{ table.capacity }} Seats</div>
-
-          <!-- Table Booking Status Tag -->
-          <div *ngIf="isTableFullyBooked(table)" class="table-status-reserved">
-            <i class="fa-solid fa-lock"></i> Reserved
-            <div class="reserved-guest-name">{{ getTableBooking(table)?.customerName }}</div>
-          </div>
-          <div *ngIf="!isTableFullyBooked(table)" class="table-status-available">
-            <i class="fa-solid fa-plus"></i> Reserve Table
-          </div>
-        </div>
-
-        <!-- Dynamic Realistic Chairs around the Table -->
-        <div 
-          *ngFor="let chair of getTableChairs(table)"
-          class="visual-chair-item"
-          [class.chair-booked]="chair.isBooked"
-          [class.chair-free]="!chair.isBooked"
-          [ngStyle]="chair.style"
-          [title]="chair.isBooked ? ('Reserved: ' + (chair.bookedGuest || 'Booked')) : ('Chair #' + chair.seatNumber + ' - Click to Reserve')"
-          (click)="$event.stopPropagation(); !chair.isBooked && openNewBookingModal('Chair', table, chair.seatNumber)">
-          
-          <div class="chair-backrest"></div>
-          <div class="chair-cushion">
-            <span class="chair-num">{{ chair.seatNumber }}</span>
-          </div>
-          <div *ngIf="chair.isBooked" class="chair-booked-dot"></div>
-        </div>
-
-      </div>
-    </div>
-  </section>
+  </div>
 
   <!-- MODAL: NEW TABLE OR CHAIR RESERVATION -->
   <div *ngIf="showCreateModal()" class="modal-backdrop" (click)="closeCreateModal()">
@@ -401,8 +558,12 @@
             <i *ngIf="newBookingType() === 'Chair'" class="fa-solid fa-chair"></i>
           </div>
           <div>
-            <h3>New {{ newBookingType() }} Reservation</h3>
-            <p class="modal-sub">Hostess Reservation Desk • Fast DB Check-In</p>
+            <h3>
+              {{ userRole() === 'Customer' ? 'Book ' + (newBookingType() === 'Chair' ? 'Single Chair / Seat' : 'Entire Table') : 'Admin: New ' + newBookingType() + ' Reservation' }}
+            </h3>
+            <p class="modal-sub">
+              {{ userRole() === 'Customer' ? 'Request will be sent to Admin for Confirmation' : 'Direct DB Confirmation & Table Lock' }}
+            </p>
           </div>
         </div>
         <button class="modal-close-btn" (click)="closeCreateModal()">×</button>
@@ -413,21 +574,21 @@
         
         <!-- Booking Type Switcher -->
         <div class="form-group">
-          <label class="form-label">Reservation Type:</label>
+          <label class="form-label">Reservation Option:</label>
           <div class="type-toggle-switch">
             <button 
               type="button"
               class="switch-btn" 
               [class.active]="newBookingType() === 'Table'"
               (click)="newBookingType.set('Table')">
-              <i class="fa-solid fa-table"></i> Entire Table
+              <i class="fa-solid fa-table"></i> Entire Table (Group / Family)
             </button>
             <button 
               type="button"
               class="switch-btn" 
               [class.active]="newBookingType() === 'Chair'"
               (click)="newBookingType.set('Chair')">
-              <i class="fa-solid fa-chair"></i> Single Chair / Seat
+              <i class="fa-solid fa-chair"></i> Single Chair / Seat (Solo / Shared)
             </button>
           </div>
         </div>
@@ -503,7 +664,7 @@
             <input 
               type="text" 
               class="form-control" 
-              placeholder="e.g. Tanvir Ahmed" 
+              placeholder="e.g. Sadia Rahman" 
               [ngModel]="newBookingCustomerName()" 
               (ngModelChange)="newBookingCustomerName.set($event)" />
           </div>
@@ -513,13 +674,13 @@
             <input 
               type="tel" 
               class="form-control" 
-              placeholder="e.g. 01712345678" 
+              placeholder="e.g. 01711223344" 
               [ngModel]="newBookingCustomerPhone()" 
               (ngModelChange)="newBookingCustomerPhone.set($event)" />
           </div>
         </div>
 
-        <!-- Customer Email & Advance Deposit -->
+        <!-- Advance Deposit -->
         <div class="form-row-2">
           <div class="form-group">
             <label class="form-label">Email (Optional):</label>
@@ -532,7 +693,7 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Advance Booking Deposit (BDT ৳):</label>
+            <label class="form-label">Estimated Deposit (BDT ৳):</label>
             <div class="deposit-input-group">
               <span class="input-prefix">৳</span>
               <input 
@@ -542,7 +703,7 @@
                 class="form-control" 
                 [ngModel]="newBookingDeposit()" 
                 (ngModelChange)="newBookingDeposit.set($event)" />
-              <label class="checkbox-label">
+              <label *ngIf="userRole() === 'Admin'" class="checkbox-label">
                 <input 
                   type="checkbox" 
                   [ngModel]="newBookingIsDepositPaid()" 
@@ -559,7 +720,7 @@
           <textarea 
             rows="2" 
             class="form-control" 
-            placeholder="e.g. Window seat, Birthday decor, High chair needed, Quiet corner..." 
+            placeholder="e.g. Window view, Birthday celebration, High chair requested..." 
             [ngModel]="newBookingSpecialRequests()" 
             (ngModelChange)="newBookingSpecialRequests.set($event)">
           </textarea>
@@ -575,9 +736,10 @@
           class="btn btn-amber" 
           [disabled]="isSubmitting()" 
           (click)="saveBooking()">
-          <i class="fa-solid fa-calendar-check" *ngIf="!isSubmitting()"></i>
+          <i class="fa-solid fa-paper-plane" *ngIf="!isSubmitting() && userRole() === 'Customer'"></i>
+          <i class="fa-solid fa-calendar-check" *ngIf="!isSubmitting() && userRole() === 'Admin'"></i>
           <i class="fa-solid fa-spinner fa-spin" *ngIf="isSubmitting()"></i>
-          Confirm & Save Reservation
+          {{ userRole() === 'Customer' ? 'Submit Booking Request' : 'Confirm & Save Reservation' }}
         </button>
       </div>
 

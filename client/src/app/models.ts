@@ -254,7 +254,7 @@ export interface TableBooking {
   guestCount: number;
   bookingDate: string;
   timeSlot: string;
-  status: 'Confirmed' | 'Seated' | 'Cancelled' | 'Completed';
+  status: 'Pending' | 'Confirmed' | 'Seated' | 'Cancelled' | 'Completed';
   specialRequests?: string;
   depositAmount: number;
   isDepositPaid: boolean;

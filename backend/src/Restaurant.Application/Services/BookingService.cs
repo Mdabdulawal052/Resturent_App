@@ -69,7 +69,7 @@ public class BookingService : IBookingService
             GuestCount = req.GuestCount > 0 ? req.GuestCount : (req.BookingType == "Chair" ? 1 : 2),
             BookingDate = req.BookingDate.Date,
             TimeSlot = string.IsNullOrEmpty(req.TimeSlot) ? "07:00 PM - 09:00 PM" : req.TimeSlot,
-            Status = "Confirmed",
+            Status = string.IsNullOrEmpty(req.Status) ? "Pending" : req.Status,
             SpecialRequests = req.SpecialRequests,
             DepositAmount = req.DepositAmount,
             IsDepositPaid = req.IsDepositPaid,

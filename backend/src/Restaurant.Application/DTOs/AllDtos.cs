@@ -319,7 +319,8 @@ public record CreateBookingRequest(
     string TimeSlot,
     string? SpecialRequests,
     decimal DepositAmount = 0,
-    bool IsDepositPaid = false
+    bool IsDepositPaid = false,
+    string? Status = "Pending"
 );
 
 public record UpdateBookingStatusRequest(string Status);
